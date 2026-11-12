@@ -14,6 +14,7 @@ final class SleepStore {
     var errorMessage: String?
     var hasRequestedAuthorization = false
     var lastLoadedAt: Date?
+    var isDemo = false
 
     var isHealthDataAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -83,6 +84,14 @@ final class SleepStore {
             errorMessage = "조회 실패: \(error.localizedDescription)"
             log.add("조회 실패: \(error)")
         }
+    }
+
+    func loadDemo() {
+        nights = DemoData.nights()
+        hasRequestedAuthorization = true
+        lastLoadedAt = Date()
+        isDemo = true
+        log.add("데모 데이터 로드: \(nights.count)일")
     }
 
     /// 18:00 이후 잠든 수면은 다음 날(기상일) 밤으로 묶는다.

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(SleepStore.self) private var store
+    @State private var demoDestination: String?
 
     var body: some View {
         NavigationStack {
@@ -38,7 +39,7 @@ struct ContentView: View {
 
                 if let t = store.lastLoadedAt {
                     Section {
-                        Text("마지막 갱신: \(Fmt.time.string(from: t))")
+                        Text(store.isDemo ? "데모 데이터 (실제 기록 아님)" : "마지막 갱신: \(Fmt.time.string(from: t))")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -65,7 +66,21 @@ struct ContentView: View {
                     }
                 }
             }
-            .refreshable { await store.load() }
+            .refreshable { if !store.isDemo { await store.load() } }
+            .navigationDestination(item: $demoDestination) { screen in
+                if screen == "log" {
+                    LogView()
+                } else if let night = store.nights.first {
+                    NightDetailView(night: night)
+                }
+            }
+            .task {
+                guard DemoMode.isOn, !store.isDemo else { return }
+                store.loadDemo()
+                if let screen = DemoMode.screen, screen != "home" {
+                    demoDestination = screen
+                }
+            }
         }
     }
 
