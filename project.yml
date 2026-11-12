@@ -1,0 +1,43 @@
+name: SleepMate
+
+options:
+  bundleIdPrefix: com.jeonghanlee
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  SleepMate:
+    type: application
+    platform: iOS
+    sources:
+      - path: SleepMate/Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jeonghanlee.sleepmate
+        TARGETED_DEVICE_FAMILY: "1"          # iPhone 전용
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+    info:
+      path: SleepMate/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: SleepMate
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSHealthShareUsageDescription: "Apple Watch가 기록한 수면 데이터를 읽어 수면 요약과 추천을 만드는 데 사용합니다."
+    entitlements:
+      path: SleepMate/Resources/SleepMate.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    scheme: {}

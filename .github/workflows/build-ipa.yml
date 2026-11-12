@@ -1,0 +1,79 @@
+name: Build unsigned IPA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "SleepMate/**"
+      - "project.yml"
+      - ".github/workflows/build-ipa.yml"
+  workflow_dispatch:    # Actions 탭에서 수동 실행 가능
+
+concurrency:
+  group: build-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (no code signing)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project SleepMate.xcodeproj \
+            -scheme SleepMate \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee xcodebuild.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" || true
+          test -d build/Build/Products/Release-iphoneos/SleepMate.app
+
+      # 서명 없이 빌드하면 HealthKit 권한(entitlements)이 앱에 들어가지 않는다.
+      # ad-hoc 서명으로 entitlements를 넣어 두면 Sideloadly가 재서명할 때 그대로 가져간다.
+      - name: Embed entitlements (ad-hoc sign)
+        run: |
+          APP=build/Build/Products/Release-iphoneos/SleepMate.app
+          codesign --force --sign - --timestamp=none \
+            --entitlements SleepMate/Resources/SleepMate.entitlements "$APP"
+          codesign -d --entitlements :- "$APP"
+
+      - name: Package IPA
+        run: |
+          mkdir -p dist/Payload
+          cp -R build/Build/Products/Release-iphoneos/SleepMate.app dist/Payload/
+          cd dist && zip -qry SleepMate.ipa Payload
+          ls -lh SleepMate.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: SleepMate-ipa-${{ github.run_number }}
+          path: dist/SleepMate.ipa
+          retention-days: 14
+
+      - name: Upload build log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
