@@ -127,6 +127,13 @@ struct ContentView: View {
                 }
             }
             .task {
+                // CI 검증용: `-testImportURL "sleepmate://import?data=..."` 로 실행하면
+                // 단축어가 앱을 열 때와 같은 처리 경로(store.handle)를 탄다.
+                if let s = UserDefaults.standard.string(forKey: "testImportURL"),
+                   let url = URL(string: s) {
+                    store.handle(url: url)
+                    return
+                }
                 guard DemoMode.isOn, !store.isDemo else { return }
                 if DemoMode.screen == "first" { return }
                 if DemoMode.screen == "guide" { showGuide = true; return }

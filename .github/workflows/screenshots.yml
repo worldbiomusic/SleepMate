@@ -70,7 +70,7 @@ jobs:
         run: |
           APP=build/Build/Products/Debug-iphonesimulator/SleepMate.app
           BID=com.jeonghanlee.sleepmate
-          mkdir -p shots
+          mkdir -p shots logs
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 \
             --wifiBars 3 --cellularBars 4 || true
@@ -80,7 +80,8 @@ jobs:
           shoot () {   # $1=file name, rest=launch args
             name=$1; shift
             xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
-            xcrun simctl launch "$UDID" "$BID" -AppleLanguages "(ko)" -AppleLocale ko_KR "$@"
+            xcrun simctl launch --stdout="$PWD/logs/$name.txt" --stderr="$PWD/logs/$name.err" \
+              "$UDID" "$BID" -AppleLanguages "(ko)" -AppleLocale ko_KR "$@"
             sleep 5
             xcrun simctl io "$UDID" screenshot "shots/$name.png"
           }
@@ -91,17 +92,16 @@ jobs:
           shoot 3-detail   -demoData YES -demoScreen detail
           shoot 4-guide    -demoData YES -demoScreen guide
 
-          # 단축어가 보내는 것과 같은 형식으로 sleepmate://import 실제 경로를 검증
-          xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
-          xcrun simctl launch "$UDID" "$BID" -AppleLanguages "(ko)" -AppleLocale ko_KR
-          sleep 4
+          # 단축어가 보내는 것과 같은 형식으로 sleepmate://import 처리 경로를 검증
+          # (simctl openurl은 시뮬레이터 확인창이 떠서 CI에서 누를 수 없으므로 실행 인자로 전달)
           URL=$(TZ=Asia/Seoul python3 .github/scripts/sample_shortcut_text.py)
           echo "URL length: ${#URL}"
-          xcrun simctl openurl "$UDID" "$URL"
-          sleep 4
-          xcrun simctl io "$UDID" screenshot "shots/5-url-import.png"
+          shoot 5-url-import -testImportURL "$URL"
           # 앱을 껐다 켜도 기록이 남아 있는지 (캐시)
           shoot 6-after-relaunch
+          echo "----- app log: 5-url-import -----"; cat logs/5-url-import.txt || true
+          echo "----- app log: 6-after-relaunch -----"; cat logs/6-after-relaunch.txt || true
+          grep -q "병합 완료" logs/5-url-import.txt   # URL 가져오기가 실제로 성공했는지 CI에서 확인
 
           xcrun simctl ui "$UDID" appearance dark
           shoot 7-home-dark -demoData YES -demoScreen home
