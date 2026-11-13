@@ -37,4 +37,27 @@ enum DemoData {
         }
         return segments
     }
+
+    /// 데모용 캘린더 일정 (오늘/내일)
+    nonisolated static func planItems(on day: Date, fixedKeywords: [String],
+                                      calendar: Calendar = .current) -> [PlanItem] {
+        let start = calendar.startOfDay(for: day)
+        let isToday = calendar.isDateInToday(day)
+        let rows: [(String, Int, Int)] = isToday
+            ? [("논문 집중 작업", 9 * 60, 10 * 60 + 30),
+               ("AI응용융합연구 수업", 10 * 60 + 30, 12 * 60),
+               ("점심", 12 * 60 + 30, 13 * 60),
+               ("개인 프로젝트 작업", 13 * 60, 15 * 60),
+               ("팀 회의", 15 * 60, 16 * 60)]
+            : [("AI응용융합연구 수업", 9 * 60, 10 * 60 + 30),
+               ("SleepMate 개발", 14 * 60, 16 * 60)]
+        return rows.map { title, s, e in
+            PlanItem(id: "demo-\(isToday ? "t" : "n")-\(s)", title: title,
+                     start: start.addingTimeInterval(TimeInterval(s * 60)),
+                     end: start.addingTimeInterval(TimeInterval(e * 60)),
+                     isAllDay: false,
+                     isFixed: CalendarService.isFixed(title: title, hasAttendees: false, keywords: fixedKeywords),
+                     canModify: true, calendarName: "데모")
+        }
+    }
 }

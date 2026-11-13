@@ -1,8 +1,11 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct ContentView: View {
+/// 홈 탭 (시나리오 05: 수면 리포트 · 요약 듣기 + 대시보드)
+struct HomeView: View {
+    var openToday: () -> Void = {}
     @Environment(SleepStore.self) private var store
+    @Environment(ContextStore.self) private var ctx
     @Environment(CoachStore.self) private var coach
     @State private var demoDestination: String?
     @State private var showCoachSettings = false
@@ -32,12 +35,22 @@ struct ContentView: View {
                     }
                 }
 
-                if let latest = store.nights.first {
-                    Section("지난밤") {
-                        LatestNightCard(night: latest)
+                if store.hasData || store.isDemo {
+                    Section {
+                        DashboardHeader(openToday: openToday)
                     }
+                }
+
+                if let latest = store.nights.first {
                     Section {
                         CoachCard()
+                    }
+                    Section("최근 7일") {
+                        WeekChart(nights: store.nights, goalMinutes: ctx.profile.goalSleepMinutes)
+                            .padding(.vertical, 4)
+                    }
+                    Section("지난밤") {
+                        LatestNightCard(night: latest)
                     }
                 }
 

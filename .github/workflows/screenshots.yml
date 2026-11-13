@@ -115,6 +115,12 @@ jobs:
           assert len(segs) == 13, "expected 13 segments (1 malformed line skipped)"
           PY
 
+          # 시나리오별 탭
+          shoot 8-tab-today     -demoData YES -demoTab today
+          shoot 9-tab-winddown  -demoData YES -demoTab winddown
+          shoot 10-tab-alarm    -demoData YES -demoTab alarm
+          shoot 11-tab-settings -demoData YES -demoTab settings
+
           xcrun simctl ui "$UDID" appearance dark
           shoot 7-home-dark -demoData YES -demoScreen home
           ls -l shots
