@@ -202,6 +202,33 @@ final class ContextStore {
         save()
     }
 
+    // MARK: 데모 (CI 스크린샷용, 저장하지 않음)
+
+    func seedDemo() {
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        today = DailyContext(date: todayStart, fatigue: 4, mood: .tired, screenCount: 38)
+        history = [42, 65, 30, 55, 48, 71].enumerated().map { i, n in
+            DailyContext(date: todayStart.addingTimeInterval(-Double(i + 1) * 86400), screenCount: n)
+        }
+        let samples: [(String, String, FeedbackResponse)] = [
+            ("01", "light-walk", .helpful), ("01", "caffeine", .helpful), ("01", "meal", .later),
+            ("01", "nap", .skip), ("01", "schedule-move", .accepted), ("02", "screen-stop", .accepted),
+            ("02", "music", .accepted), ("02", "focus", .skip), ("04", "alarm", .accepted),
+            ("05", "listen", .helpful), ("01", "break", .helpful), ("01", "bedtime", .later),
+        ]
+        feedback = samples.enumerated().map { i, t in
+            FeedbackEntry(date: Date().addingTimeInterval(-Double(i) * 20000), scenario: t.0,
+                          itemKey: t.1, itemTitle: t.1, response: t.2)
+        }
+        let log = AgentLog.shared
+        log.add(.sleepImported, path: .rule, action: "새 기록 37개 병합")
+        log.add(.morning, path: .llm, action: "Claude 요약 생성", guardNote: "수치만 전송")
+        log.add(.planToday, path: .rule, action: "추천 6개 · 일정 조정안 2개")
+        log.add(.windDown, path: .rule, action: "오후 10:00 ‘취침 준비 90분 전’", guardNote: "허용")
+        log.add(.planAlarm, path: .rule, action: "시계 알람 07:30 요청", guardNote: "사용자 알람 우선")
+    }
+
     // MARK: 평가 지표 (계획서: 추천 수락률 · 완료율 · 취침 규칙성 · 만족도)
 
     struct Metrics {

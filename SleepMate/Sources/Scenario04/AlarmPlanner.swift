@@ -50,6 +50,7 @@ enum AlarmPlanner {
 }
 
 struct AlarmView: View {
+    @Environment(SleepStore.self) private var store
     @Environment(ContextStore.self) private var ctx
     @Environment(CalendarService.self) private var calendar
     @Environment(\.openURL) private var openURL
@@ -69,6 +70,12 @@ struct AlarmView: View {
         NavigationStack {
             List {
                 planSection
+                Section {
+                    WakeHistoryChart(nights: store.nights, plannedWake: wakeMinutes)
+                        .padding(.vertical, 4)
+                } header: {
+                    Text("최근 기상 시각 vs 내일 추천")
+                }
                 tomorrowSection
                 alarmSection
                 preferenceSection
@@ -97,6 +104,11 @@ struct AlarmView: View {
                             .font(.system(size: 44, weight: .bold, design: .rounded))
                     }
                 }
+                TomorrowPlanChart(bedMinutes: wakeMinutes - ctx.profile.goalSleepMinutes - 15,
+                                  wakeMinutes: wakeMinutes,
+                                  prep: ctx.profile.prepMinutes,
+                                  commute: ctx.profile.commuteMinutes,
+                                  firstEvent: plan.firstEvent)
                 Text(customWake == nil ? plan.reason : "직접 정한 시각 (사용자 알람이 항상 우선)")
                     .font(.footnote).foregroundStyle(.secondary)
                 Text("목표 수면 \(Clock.durationText(ctx.profile.goalSleepMinutes)) + 잠드는 시간 15분 기준")

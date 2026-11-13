@@ -8,6 +8,7 @@ enum AppTab: String {
 ///  홈(05 수면 요약·대시보드) · 오늘(01 행동·일정 추천) · 취침 준비(02) · 알람(04) · 설정(Context)
 struct ContentView: View {
     @Environment(SleepStore.self) private var store
+    @Environment(ContextStore.self) private var ctx
     @State private var tab: AppTab = {
         if let t = UserDefaults.standard.string(forKey: "demoTab"), let v = AppTab(rawValue: t) { return v }
         return .home
@@ -32,8 +33,10 @@ struct ContentView: View {
                 .tag(AppTab.settings)
         }
         .task {
+            guard DemoMode.isOn else { return }
+            ctx.seedDemo()
             // CI 스크린샷: 홈이 아닌 탭으로 바로 열 때도 데모 데이터 준비
-            if DemoMode.isOn, UserDefaults.standard.string(forKey: "demoTab") != nil, !store.isDemo {
+            if UserDefaults.standard.string(forKey: "demoTab") != nil, !store.isDemo {
                 store.loadDemo()
             }
         }

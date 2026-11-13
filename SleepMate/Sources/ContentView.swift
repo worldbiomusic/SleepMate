@@ -42,15 +42,22 @@ struct HomeView: View {
                 }
 
                 if let latest = store.nights.first {
+                    Section("지난밤 수면 단계") {
+                        LatestNightCard(night: latest)
+                    }
                     Section {
                         CoachCard()
                     }
-                    Section("최근 7일") {
-                        WeekChart(nights: store.nights, goalMinutes: ctx.profile.goalSleepMinutes)
+                    Section {
+                        WeekStageChart(nights: store.nights, goalMinutes: ctx.profile.goalSleepMinutes)
                             .padding(.vertical, 4)
-                    }
-                    Section("지난밤") {
-                        LatestNightCard(night: latest)
+                        NavigationLink {
+                            SleepReportView()
+                        } label: {
+                            Label("수면 리포트 전체 보기", systemImage: "chart.xyaxis.line")
+                        }
+                    } header: {
+                        Text("최근 7일 · 단계별 수면 시간")
                     }
                 }
 
@@ -154,6 +161,8 @@ struct HomeView: View {
             .navigationDestination(item: $demoDestination) { screen in
                 if screen == "log" {
                     LogView()
+                } else if screen == "report" {
+                    SleepReportView()
                 } else if screen == "coach" {
                     List { Section { CoachCard() } }
                         .navigationTitle("수면 코치")
@@ -253,10 +262,9 @@ struct LatestNightCard: View {
                     .foregroundStyle(.secondary)
             }
 
-            StageBar(night: night)
-                .frame(height: 14)
+            HypnogramChart(night: night)
 
-            StageLegend(night: night)
+            StageBreakdownView(night: night)
 
             if !night.hasDetailedStages {
                 Text("단계별 데이터가 없습니다. Apple Watch를 차고 자면 코어·깊은·REM 수면이 기록됩니다.")

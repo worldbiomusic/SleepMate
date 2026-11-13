@@ -23,6 +23,16 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    FeedbackDonut(feedback: ctx.feedback.filter { $0.date >= Date().addingTimeInterval(-14 * 86400) })
+                    ScenarioAcceptChart(feedback: ctx.feedback)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("판단 경로 (EVENT → REASON)").font(.caption).foregroundStyle(.secondary)
+                        AgentPathChart(entries: AgentLog.shared.entries)
+                    }
+                } header: {
+                    Text("한눈에 보기 · 최근 14일")
+                }
                 sleepGoalSection
                 morningSection
                 eveningSection

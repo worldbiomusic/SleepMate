@@ -121,6 +121,7 @@ jobs:
           shoot 9-tab-winddown  -demoData YES -demoTab winddown
           shoot 10-tab-alarm    -demoData YES -demoTab alarm
           shoot 11-tab-settings -demoData YES -demoTab settings
+          shoot 12-report       -demoData YES -demoScreen report
 
           xcrun simctl ui "$UDID" appearance dark
           shoot 7-home-dark -demoData YES -demoScreen home

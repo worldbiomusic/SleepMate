@@ -8,6 +8,7 @@ struct TodayView: View {
 
     @State private var items: [PlanItem] = []
     @State private var recs: [DayRecommendation] = []
+    @State private var markers: [DayMarker] = []
     @State private var proposals: [ScheduleChange] = []
     @State private var decided: [UUID: FeedbackResponse] = [:]
     @State private var errorText: String?
@@ -25,6 +26,7 @@ struct TodayView: View {
         NavigationStack {
             List {
                 contextSection
+                flowSection
                 recommendationSection
                 scheduleSection
                 if !proposals.isEmpty { proposalSection }
@@ -44,6 +46,7 @@ struct TodayView: View {
         ctx.rollOverIfNeeded()
         items = calendar.items(on: Date(), fixedKeywords: ctx.profile.fixedKeywords)
         recs = DayPlanner.recommendations(input)
+        markers = DayPlanner.markers(input)
         proposals = DayPlanner.proposals(input)
         AgentLog.shared.add(.planToday, path: .rule,
                             action: "추천 \(recs.count)개 · 일정 조정안 \(proposals.count)개 (수면 부족 신호: \(DayPlanner.lowSleepSignal(input) ? "있음" : "없음"))")
@@ -98,6 +101,38 @@ struct TodayView: View {
             }
         } header: {
             Text("오늘의 컨디션")
+        }
+    }
+
+    // MARK: 오늘의 흐름 (타임라인 + 추정 컨디션)
+
+    private var wakeMinutesToday: Int {
+        if let w = stats?.wakeTime, stats?.daysSinceLastNight ?? 9 <= 1 { return Clock.minutes(of: w) }
+        return ctx.profile.defaultWakeMinutes
+    }
+
+    private var flowSection: some View {
+        Section {
+            DayTimelineChart(items: items, markers: markers)
+                .padding(.vertical, 4)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("예상 컨디션 흐름").font(.subheadline.weight(.semibold))
+                EnergyCurveChart(points: EnergyModel.curve(wakeMinutes: wakeMinutesToday,
+                                                           bedMinutes: ctx.profile.bedtimeMinutes,
+                                                           score: score?.total))
+                Text("생체 리듬과 수면 점수로 만든 단순 추정이에요. 개인차가 있어요.")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("오늘의 흐름")
+        } footer: {
+            HStack(spacing: 12) {
+                Label("고정 일정", systemImage: "square.fill").foregroundStyle(.gray)
+                Label("조정 가능", systemImage: "square.fill").foregroundStyle(.green)
+                Label("지금", systemImage: "line.diagonal").foregroundStyle(.red)
+            }
+            .font(.caption2)
         }
     }
 
@@ -159,6 +194,8 @@ struct TodayView: View {
 
     private var proposalSection: some View {
         Section {
+            ProposalCompareChart(items: items, proposals: proposals)
+                .padding(.vertical, 4)
             ForEach(proposals) { p in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .top) {

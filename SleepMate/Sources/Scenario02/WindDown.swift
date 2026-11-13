@@ -149,6 +149,13 @@ struct WindDownView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    BedtimeCountdown(profile: ctx.profile)
+                    WindDownTimelineChart(profile: ctx.profile)
+                        .padding(.top, 8)
+                } header: {
+                    Text("지금")
+                }
                 timelineSection
                 screenSection
                 lateSection
@@ -210,16 +217,15 @@ struct WindDownView: View {
         let goal = ctx.profile.screenGoal
         return Section {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(count)").font(.system(size: 40, weight: .bold, design: .rounded))
-                    Text("/ \(goal)\(ctx.profile.screenUnit)").foregroundStyle(.secondary)
-                    Spacer()
+                HStack(spacing: 20) {
+                    ScreenGauge(count: count, goal: goal, unit: ctx.profile.screenUnit)
+                        .padding(.leading, 8)
+                    Text(WindDownPlan.screenMessage(count: count, goal: goal, unit: ctx.profile.screenUnit,
+                                                    stopped: ctx.today.stoppedScreen))
+                        .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                ProgressView(value: min(1, Double(count) / Double(max(goal, 1))))
-                    .tint(count >= goal ? .orange : .accentColor)
-                Text(WindDownPlan.screenMessage(count: count, goal: goal, unit: ctx.profile.screenUnit,
-                                                stopped: ctx.today.stoppedScreen))
-                    .font(.callout)
+                .padding(.vertical, 8)
                 HStack {
                     ForEach([1, 5, 10], id: \.self) { n in
                         Button("+\(n)") { ctx.addScreen(n) }.buttonStyle(.bordered)
@@ -234,6 +240,8 @@ struct WindDownView: View {
                 }
                 Button("초기화", role: .destructive) { ctx.resetScreen() }
                     .font(.caption)
+                Text("최근 7일").font(.caption).foregroundStyle(.secondary).padding(.top, 6)
+                ScreenHistoryChart(history: [ctx.today] + ctx.history, goal: goal)
             }
             .padding(.vertical, 4)
         } header: {

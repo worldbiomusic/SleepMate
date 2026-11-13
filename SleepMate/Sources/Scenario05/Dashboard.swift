@@ -76,7 +76,12 @@ struct DashboardHeader: View {
 
             HStack(spacing: 10) {
                 Button {
-                    if coach.speech.isSpeaking { coach.stopSpeaking() } else { coach.speak() }
+                    if coach.speech.isSpeaking {
+                        coach.stopSpeaking()
+                    } else {
+                        coach.speak()
+                        ctx.record(scenario: "05", key: "listen", title: "수면 요약 듣기", response: .helpful)
+                    }
                 } label: {
                     Label(coach.speech.isSpeaking ? "정지" : "수면 요약 듣기",
                           systemImage: coach.speech.isSpeaking ? "stop.fill" : "play.fill")
