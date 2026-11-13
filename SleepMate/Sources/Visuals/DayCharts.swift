@@ -62,16 +62,19 @@ struct DayTimelineChart: View {
                         y: .value("구분", "일정"), height: .ratio(0.7))
                     .foregroundStyle(it.isFixed ? Color.gray.opacity(0.55) : Color.green.opacity(0.7))
                     .cornerRadius(4)
-                    .annotation(position: .overlay, alignment: .leading) {
-                        Text(it.title).font(.system(size: 9, weight: .semibold)).foregroundStyle(.white)
-                            .lineLimit(1).padding(.leading, 3)
+                    .annotation(position: .overlay, alignment: .center) {
+                        if it.durationMin >= 90 {
+                            Text(String(it.title.prefix(2))).font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
                     }
             }
-            ForEach(markers) { m in
+            // 가까운 표시끼리 겹치지 않게 위/아래 번갈아 이름 표시
+            ForEach(Array(markers.sorted { $0.time < $1.time }.enumerated()), id: \.element.id) { idx, m in
                 PointMark(x: .value("시각", m.time), y: .value("구분", "추천"))
                     .foregroundStyle(m.color)
                     .symbolSize(80)
-                    .annotation(position: .top, spacing: 2) {
+                    .annotation(position: idx % 2 == 0 ? .top : .bottom, spacing: 2) {
                         Text(m.label).font(.system(size: 9))
                     }
             }
@@ -92,7 +95,7 @@ struct DayTimelineChart: View {
                 AxisValueLabel(format: .dateTime.hour())
             }
         }
-        .frame(height: 150)
+        .frame(height: 170)
     }
 }
 

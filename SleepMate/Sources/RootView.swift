@@ -32,6 +32,7 @@ struct ContentView: View {
                 .tabItem { Label("설정", systemImage: "slider.horizontal.3") }
                 .tag(AppTab.settings)
         }
+        .environment(\.locale, Locale(identifier: "ko_KR"))   // 차트 축(시각·요일)을 한국어로
         .task {
             guard DemoMode.isOn else { return }
             ctx.seedDemo()

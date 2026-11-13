@@ -89,7 +89,8 @@ struct RealtimeContext {
         self.now = now
         let mins = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
         var diff = profile.bedtimeMinutes - mins
-        if diff < -6 * 60 { diff += 1440 }      // 새벽이면 다음 취침까지
+        if diff < -6 * 60 { diff += 1440 }      // 다음 취침까지
+        if diff > 18 * 60 { diff -= 1440 }      // 새벽(취침 목표 이후)이면 '지났음'(음수)
         minutesToBedtime = diff
         nextEvent = todayItems.filter { !$0.isAllDay && $0.start > now }.min { $0.start < $1.start }
     }
