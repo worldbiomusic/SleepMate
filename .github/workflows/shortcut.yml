@@ -1,0 +1,52 @@
+name: Build & sign Shortcut
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "shortcut/**"
+      - ".github/workflows/shortcut.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shortcut:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Environment
+        run: |
+          sw_vers
+          which shortcuts && shortcuts --help 2>&1 | head -20 || echo "no shortcuts CLI"
+          shortcuts sign --help 2>&1 | head -20 || true
+
+      - name: Generate unsigned shortcut
+        run: python3 shortcut/make_shortcut.py "dist/SleepMate 동기화.unsigned.shortcut"
+
+      - name: Sign (anyone)
+        run: |
+          set -x
+          shortcuts sign --mode anyone \
+            --input "dist/SleepMate 동기화.unsigned.shortcut" \
+            --output "dist/SleepMate 동기화.shortcut" 2>&1 | tee sign.log
+          ls -l dist
+          test -s "dist/SleepMate 동기화.shortcut"
+          head -c 4 "dist/SleepMate 동기화.shortcut" | xxd
+
+      - name: Publish to `shortcut` branch
+        if: success()
+        run: |
+          cp -R dist /tmp/dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan shortcut
+          git rm -rq --cached . && git clean -fdq
+          cp "/tmp/dist/SleepMate 동기화.shortcut" ./SleepMate.shortcut
+          printf '# SleepMate 단축어\n\nCommit: %s\n' "$GITHUB_SHA" > README.md
+          git add SleepMate.shortcut README.md
+          git commit -qm "Signed shortcut for $GITHUB_SHA"
+          git push -f origin shortcut
