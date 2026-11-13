@@ -99,15 +99,25 @@ jobs:
           shoot 5-url-import -testImportURL "$URL"
           # 앱을 껐다 켜도 기록이 남아 있는지 (캐시)
           shoot 6-after-relaunch
-          echo "----- app log: 5-url-import -----"; cat logs/5-url-import.txt || true
-          echo "----- app log: 6-after-relaunch -----"; cat logs/6-after-relaunch.txt || true
-          grep -q "병합 완료" logs/5-url-import.txt   # URL 가져오기가 실제로 성공했는지 CI에서 확인
+          echo "----- app log: 5-url-import -----";    cat logs/5-url-import.err || true
+          echo "----- app log: 6-after-relaunch -----"; cat logs/6-after-relaunch.err || true
+          # URL 가져오기 결과가 앱 저장소(캐시)에 실제로 남았는지 확인
+          DATA=$(xcrun simctl get_app_container "$UDID" "$BID" data)
+          CACHE="$DATA/Library/Application Support/sleep_cache.json"
+          python3 - "$CACHE" <<'PY'
+          import json, sys
+          c = json.load(open(sys.argv[1]))
+          segs = c["segments"]
+          print(f"cache: {len(segs)} segments, source={c.get('lastSource')}")
+          assert len(segs) == 13, "expected 13 segments (1 malformed line skipped)"
+          PY
 
           xcrun simctl ui "$UDID" appearance dark
           shoot 7-home-dark -demoData YES -demoScreen home
           ls -l shots
 
       - name: Publish to `screenshots` branch
+        if: always() && hashFiles('shots/*.png') != ''
         run: |
           cp -R shots /tmp/shots
           git config user.name "github-actions[bot]"

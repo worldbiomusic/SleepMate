@@ -1,5 +1,7 @@
 # SleepMate (iPhone) — 1단계: Apple Watch 수면 데이터 불러오기
 
+> **무료 Apple ID로 설치했다면** HealthKit 직접 연결이 막히므로 **단축어로 가져오기**를 씁니다 → [docs/shortcut-guide.md](docs/shortcut-guide.md)
+
 맥 없이 개발합니다. Linux에서 코드를 작성하고 GitHub에 푸시하면 GitHub Actions의 macOS runner가 **서명 없는 `.ipa`** 를 빌드합니다. 그 파일을 Windows PC에서 **Sideloadly**(무료 Apple ID 사용)로 아이폰에 설치합니다.
 
 ## 현재 기능

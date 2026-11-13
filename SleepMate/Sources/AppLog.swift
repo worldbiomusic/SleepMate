@@ -18,7 +18,8 @@ final class AppLog {
     func add(_ message: String) {
         entries.append(Entry(message: message))
         if entries.count > 500 { entries.removeFirst(entries.count - 500) }
-        print("[SleepMate] \(message)")
+        // stderr는 버퍼링되지 않아 CI(simctl launch --stderr)에서도 바로 보인다.
+        FileHandle.standardError.write(Data("[SleepMate] \(message)\n".utf8))
     }
 
     func clear() { entries.removeAll() }
