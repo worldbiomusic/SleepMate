@@ -85,7 +85,7 @@ struct WindDownTimelineChart: View {
         let rel = -RealtimeContext(now: now, profile: profile, todayItems: []).minutesToBedtime
         Chart {
             BarMark(xStart: .value("시작", -lead), xEnd: .value("끝", 0), y: .value("", "흐름"),
-                    height: .fixedValue(10))
+                    height: .ratio(0.25))
                 .foregroundStyle(LinearGradient(colors: [.blue.opacity(0.4), .purple.opacity(0.5), .indigo],
                                                 startPoint: .leading, endPoint: .trailing))
                 .cornerRadius(5)
