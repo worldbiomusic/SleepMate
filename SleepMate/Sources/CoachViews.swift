@@ -65,6 +65,8 @@ struct CoachCard: View {
                 } label: {
                     Label(coach.speech.isSpeaking ? "정지" : "읽어주기",
                           systemImage: coach.speech.isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
+                        .labelStyle(.titleAndIcon)
+                        .lineLimit(1)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -77,7 +79,9 @@ struct CoachCard: View {
                         showSettings = true
                     }
                 } label: {
-                    Label("Claude 요약", systemImage: "wand.and.stars")
+                    Label("Claude", systemImage: "wand.and.stars")
+                        .labelStyle(.titleAndIcon)
+                        .lineLimit(1)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
