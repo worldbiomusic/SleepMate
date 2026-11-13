@@ -3,7 +3,9 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Environment(SleepStore.self) private var store
+    @Environment(CoachStore.self) private var coach
     @State private var demoDestination: String?
+    @State private var showCoachSettings = false
     @State private var showGuide = false
     @State private var showImporter = false
 
@@ -33,6 +35,9 @@ struct ContentView: View {
                 if let latest = store.nights.first {
                     Section("지난밤") {
                         LatestNightCard(night: latest)
+                    }
+                    Section {
+                        CoachCard()
                     }
                 }
 
@@ -96,8 +101,14 @@ struct ContentView: View {
                             } label: {
                                 Label("HealthKit 직접 연결 (유료 계정 전용)", systemImage: "heart.text.square")
                             }
+                            Button {
+                                showCoachSettings = true
+                            } label: {
+                                Label("AI 요약 설정", systemImage: "gearshape")
+                            }
                             Button(role: .destructive) {
                                 store.clearAll()
+                                coach.clear()
                             } label: {
                                 Label("저장된 기록 지우기", systemImage: "trash")
                             }
@@ -112,6 +123,14 @@ struct ContentView: View {
             .sheet(isPresented: $showGuide) {
                 ShortcutGuideView()
             }
+            .sheet(isPresented: $showCoachSettings) {
+                CoachSettingsView()
+            }
+            // 새 기록이 들어오면 요약 갱신 (단축어로 가져온 경우 설정에 따라 Claude 요약·자동 읽기)
+            .onChange(of: store.lastLoadedAt) { _, _ in
+                let real = !store.isDemo
+                Task { await coach.update(nights: store.nights, fromImport: real, persist: real) }
+            }
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: [.xml, .data],
                           allowsMultipleSelection: false) { result in
@@ -122,11 +141,17 @@ struct ContentView: View {
             .navigationDestination(item: $demoDestination) { screen in
                 if screen == "log" {
                     LogView()
+                } else if screen == "coach" {
+                    List { Section { CoachCard() } }
+                        .navigationTitle("수면 코치")
                 } else if let night = store.nights.first {
                     NightDetailView(night: night)
                 }
             }
             .task {
+                // 앱 시작 시 저장된 기록으로 요약 준비 (이미 같은 밤 요약이 있으면 유지)
+                await coach.update(nights: store.nights, fromImport: false)
+
                 // CI 검증용: `-testImportURL "sleepmate://import?data=..."` 로 실행하면
                 // 단축어가 앱을 열 때와 같은 처리 경로(store.handle)를 탄다.
                 if let s = UserDefaults.standard.string(forKey: "testImportURL"),
@@ -134,9 +159,14 @@ struct ContentView: View {
                     store.handle(url: url)
                     return
                 }
+                if !DemoMode.isOn, let screen = DemoMode.screen, screen != "home" {
+                    demoDestination = screen      // 실제 데이터로 특정 화면 확인 (CI 스크린샷용)
+                    return
+                }
                 guard DemoMode.isOn, !store.isDemo else { return }
                 if DemoMode.screen == "first" { return }
                 if DemoMode.screen == "guide" { showGuide = true; return }
+                if DemoMode.screen == "settings" { showCoachSettings = true; return }
                 store.loadDemo()
                 if let screen = DemoMode.screen, screen != "home" {
                     demoDestination = screen
