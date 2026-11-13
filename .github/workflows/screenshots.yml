@@ -64,6 +64,7 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee xcodebuild.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" xcodebuild.log   # .app 폴더는 실패해도 생기므로 로그로 판정
           test -d build/Build/Products/Debug-iphonesimulator/SleepMate.app
 
       - name: Capture screenshots

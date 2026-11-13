@@ -168,7 +168,7 @@ final class ContextStore {
 
     // MARK: 화면 사용 (알림 버튼에서 앱이 꺼진 상태로도 기록되도록 UserDefaults 공유)
 
-    static func screenKey(for day: Date) -> String {
+    nonisolated static func screenKey(for day: Date) -> String {
         let f = DateFormatter()
         f.dateFormat = "yyyyMMdd"
         return "screenCount-" + f.string(from: day)

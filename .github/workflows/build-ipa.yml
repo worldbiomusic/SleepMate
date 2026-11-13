@@ -46,6 +46,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             build 2>&1 | tee xcodebuild.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" xcodebuild.log   # .app 폴더는 실패해도 생기므로 로그로 판정
           test -d build/Build/Products/Release-iphoneos/SleepMate.app
 
       # 서명 없이 빌드하면 HealthKit 권한(entitlements)이 앱에 들어가지 않는다.
