@@ -9,6 +9,7 @@ on:
       - "SleepMate/**"
       - "project.yml"
       - ".github/workflows/screenshots.yml"
+      - ".github/scripts/**"
   workflow_dispatch:
 
 concurrency:
@@ -74,6 +75,8 @@ jobs:
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 \
             --wifiBars 3 --cellularBars 4 || true
 
+          export SIMCTL_CHILD_TZ=Asia/Seoul      # 앱을 한국 시간대로 실행
+
           shoot () {   # $1=file name, rest=launch args
             name=$1; shift
             xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
@@ -83,12 +86,25 @@ jobs:
           }
 
           xcrun simctl ui "$UDID" appearance light
-          shoot 1-first-launch
+          shoot 1-first-launch -demoData YES -demoScreen first
           shoot 2-home     -demoData YES -demoScreen home
           shoot 3-detail   -demoData YES -demoScreen detail
-          shoot 4-log      -demoData YES -demoScreen log
+          shoot 4-guide    -demoData YES -demoScreen guide
+
+          # 단축어가 보내는 것과 같은 형식으로 sleepmate://import 실제 경로를 검증
+          xcrun simctl terminate "$UDID" "$BID" 2>/dev/null || true
+          xcrun simctl launch "$UDID" "$BID" -AppleLanguages "(ko)" -AppleLocale ko_KR
+          sleep 4
+          URL=$(TZ=Asia/Seoul python3 .github/scripts/sample_shortcut_text.py)
+          echo "URL length: ${#URL}"
+          xcrun simctl openurl "$UDID" "$URL"
+          sleep 4
+          xcrun simctl io "$UDID" screenshot "shots/5-url-import.png"
+          # 앱을 껐다 켜도 기록이 남아 있는지 (캐시)
+          shoot 6-after-relaunch
+
           xcrun simctl ui "$UDID" appearance dark
-          shoot 5-home-dark -demoData YES -demoScreen home
+          shoot 7-home-dark -demoData YES -demoScreen home
           ls -l shots
 
       - name: Publish to `screenshots` branch

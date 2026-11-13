@@ -34,6 +34,10 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jeonghanlee.sleepmate
+            CFBundleURLSchemes: [sleepmate]
+        LSApplicationQueriesSchemes: [shortcuts]
         NSHealthShareUsageDescription: "Apple Watch가 기록한 수면 데이터를 읽어 수면 요약과 추천을 만드는 데 사용합니다."
     entitlements:
       path: SleepMate/Resources/SleepMate.entitlements

@@ -8,6 +8,7 @@ struct SleepMateApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
+                .onOpenURL { url in store.handle(url: url) }
         }
     }
 }

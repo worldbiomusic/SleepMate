@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// HKCategoryValueSleepAnalysis 원시값과 1:1 대응.
-enum SleepStage: Int, CaseIterable, Identifiable {
+enum SleepStage: Int, CaseIterable, Identifiable, Codable {
     case inBed = 0
     case asleepUnspecified = 1
     case awake = 2
@@ -46,7 +46,7 @@ enum SleepStage: Int, CaseIterable, Identifiable {
     }
 }
 
-struct SleepSegment: Identifiable {
+struct SleepSegment: Identifiable, Codable {
     let id: UUID
     let stage: SleepStage
     let start: Date

@@ -1,13 +1,16 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Environment(SleepStore.self) private var store
     @State private var demoDestination: String?
+    @State private var showGuide = false
+    @State private var showImporter = false
 
     var body: some View {
         NavigationStack {
             List {
-                if !store.hasRequestedAuthorization && store.nights.isEmpty {
+                if !store.hasData && !store.isDemo {
                     connectSection
                 }
 
@@ -15,6 +18,14 @@ struct ContentView: View {
                     Section {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .foregroundStyle(.orange)
+                            .font(.callout)
+                    }
+                }
+
+                if let info = store.infoMessage, store.errorMessage == nil {
+                    Section {
+                        Label(info, systemImage: "checkmark.circle")
+                            .foregroundStyle(.green)
                             .font(.callout)
                     }
                 }
@@ -39,7 +50,7 @@ struct ContentView: View {
 
                 if let t = store.lastLoadedAt {
                     Section {
-                        Text(store.isDemo ? "데모 데이터 (실제 기록 아님)" : "마지막 갱신: \(Fmt.time.string(from: t))")
+                        Text(footer(t))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -58,15 +69,56 @@ struct ContentView: View {
                     if store.isLoading {
                         ProgressView()
                     } else {
-                        Button {
-                            Task { await store.connectAndLoad() }
+                        Menu {
+                            Button {
+                                store.runShortcut()
+                            } label: {
+                                Label("단축어로 가져오기", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            Button {
+                                store.importFromClipboard()
+                            } label: {
+                                Label("클립보드에서 가져오기", systemImage: "doc.on.clipboard")
+                            }
+                            Button {
+                                showImporter = true
+                            } label: {
+                                Label("건강 데이터 내보내기 파일 열기", systemImage: "doc.badge.arrow.up")
+                            }
+                            Divider()
+                            Button {
+                                showGuide = true
+                            } label: {
+                                Label("단축어 설정 방법", systemImage: "questionmark.circle")
+                            }
+                            Button {
+                                Task { await store.connectHealthKit() }
+                            } label: {
+                                Label("HealthKit 직접 연결 (유료 계정 전용)", systemImage: "heart.text.square")
+                            }
+                            Button(role: .destructive) {
+                                store.clearAll()
+                            } label: {
+                                Label("저장된 기록 지우기", systemImage: "trash")
+                            }
                         } label: {
                             Image(systemName: "arrow.clockwise")
+                        } primaryAction: {
+                            store.runShortcut()
                         }
                     }
                 }
             }
-            .refreshable { if !store.isDemo { await store.load() } }
+            .sheet(isPresented: $showGuide) {
+                ShortcutGuideView()
+            }
+            .fileImporter(isPresented: $showImporter,
+                          allowedContentTypes: [.xml, .data],
+                          allowsMultipleSelection: false) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    Task { await store.importHealthExport(from: url) }
+                }
+            }
             .navigationDestination(item: $demoDestination) { screen in
                 if screen == "log" {
                     LogView()
@@ -76,6 +128,8 @@ struct ContentView: View {
             }
             .task {
                 guard DemoMode.isOn, !store.isDemo else { return }
+                if DemoMode.screen == "first" { return }
+                if DemoMode.screen == "guide" { showGuide = true; return }
                 store.loadDemo()
                 if let screen = DemoMode.screen, screen != "home" {
                     demoDestination = screen
@@ -84,22 +138,45 @@ struct ContentView: View {
         }
     }
 
+    private func footer(_ t: Date) -> String {
+        if store.isDemo { return "데모 데이터 (실제 기록 아님)" }
+        let src = store.lastSource?.rawValue ?? "-"
+        return "마지막 가져오기: \(Fmt.day.string(from: t)) \(Fmt.time.string(from: t)) · \(src)\n오른쪽 위 ↻ 버튼을 누르면 단축어로 최신 기록을 가져옵니다. 길게 누르면 다른 방법이 나옵니다."
+    }
+
     private var connectSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Apple Watch 수면 데이터 연결")
+                Text("Apple Watch 수면 데이터 가져오기")
                     .font(.headline)
-                Text("건강 앱에 저장된 수면 기록(코어·깊은·REM 수면, 깨어 있음)을 읽어옵니다. 데이터는 기기 밖으로 전송되지 않습니다.")
+                Text("아이폰 '단축어' 앱이 건강 앱의 수면 기록(코어·깊은·REM 수면, 깨어 있음)을 읽어 이 앱으로 넘겨줍니다. 데이터는 기기 밖으로 전송되지 않습니다.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Button {
-                    Task { await store.connectAndLoad() }
+                    store.runShortcut()
                 } label: {
-                    Label("건강 데이터 연결하기", systemImage: "heart.text.square")
+                    Label("단축어로 가져오기", systemImage: "arrow.triangle.2.circlepath")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(store.isLoading)
+
+                Button {
+                    showGuide = true
+                } label: {
+                    Label("처음이라면: 단축어 설정 방법", systemImage: "questionmark.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    showImporter = true
+                } label: {
+                    Text("또는 건강 데이터 내보내기(export.xml) 파일 열기")
+                        .font(.footnote)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderless)
             }
             .padding(.vertical, 4)
         }

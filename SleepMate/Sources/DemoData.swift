@@ -11,7 +11,7 @@ enum DemoMode {
 @MainActor
 enum DemoData {
     /// 최근 7일치 가상의 Apple Watch 수면 기록.
-    static func nights(calendar: Calendar = .current) -> [SleepNight] {
+    static func segments(calendar: Calendar = .current) -> [SleepSegment] {
         let pattern: [(SleepStage, Int)] = [
             (.core, 25), (.deep, 35), (.core, 30), (.rem, 15),
             (.core, 35), (.deep, 25), (.core, 30), (.awake, 4),
@@ -35,6 +35,6 @@ enum DemoData {
                 t = end
             }
         }
-        return SleepStore.groupIntoNights(segments, calendar: calendar)
+        return segments
     }
 }
