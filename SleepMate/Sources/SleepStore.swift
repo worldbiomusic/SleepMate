@@ -8,6 +8,7 @@ enum DataSource: String, Codable {
     case healthExport = "건강 데이터 내보내기"
     case healthKit = "HealthKit"
     case demo = "데모"
+    case test = "테스트"
 }
 
 @MainActor
@@ -28,7 +29,10 @@ final class SleepStore {
     var hasRequestedAuthorization = false
     var lastLoadedAt: Date?
     var lastSource: DataSource?
-    var isDemo = false
+    var isDemo = false               // 데모·테스트 데이터 표시 중 (저장 안 함)
+    var testLabel: String?
+    /// 마지막 변경이 실제 가져오기(단축어 등)였는지 — 자동 Claude 요약·읽기는 이때만
+    private(set) var lastChangeWasImport = false
 
     /// 최근 몇 일치를 보관할지
     private let keepDays = 90
@@ -172,8 +176,38 @@ final class SleepStore {
 
     // MARK: - 데모
 
+    /// 테스트 모드: 더미 수면 기록 표시 (실제 기록·캐시는 그대로)
+    func loadTest(segments segs: [SleepSegment], label: String) {
+        isDemo = true
+        testLabel = label
+        lastChangeWasImport = false
+        errorMessage = nil
+        infoMessage = "테스트 데이터: \(label)"
+        segments = segs.sorted { $0.start < $1.start }
+        nights = Self.groupIntoNights(segments)
+        lastSource = .test
+        lastLoadedAt = Date()
+        log.add("테스트 데이터 로드: \(label) (\(segs.count)개 구간, \(nights.count)일)")
+    }
+
+    /// 테스트 모드 종료: 저장된 실제 기록으로 복귀
+    func restoreReal() {
+        isDemo = false
+        testLabel = nil
+        lastChangeWasImport = false
+        infoMessage = nil
+        errorMessage = nil
+        segments = []
+        nights = []
+        lastSource = nil
+        loadCache()
+        lastLoadedAt = lastLoadedAt ?? Date()   // 화면 갱신 트리거
+        log.add("테스트 모드 종료 → 실제 기록 \(segments.count)개 구간")
+    }
+
     func loadDemo() {
         isDemo = true
+        lastChangeWasImport = false
         segments = DemoData.segments()
         nights = Self.groupIntoNights(segments)
         lastLoadedAt = Date()
@@ -184,7 +218,14 @@ final class SleepStore {
     // MARK: - 병합 · 저장
 
     private func merge(_ new: [SleepSegment], source: DataSource) {
-        isDemo = false
+        if isDemo {
+            // 테스트·데모 중에 실제 기록이 들어오면 실제 기록으로 먼저 돌아간 뒤 병합
+            isDemo = false
+            testLabel = nil
+            segments = []
+            loadCache()
+        }
+        lastChangeWasImport = true
         errorMessage = nil
         let cutoff = Date().addingTimeInterval(-Double(keepDays) * 86400)
 
@@ -229,7 +270,7 @@ final class SleepStore {
         }
     }
 
-    private func loadCache() {
+    func loadCache() {
         guard let data = try? Data(contentsOf: cacheURL),
               let cache = try? JSONDecoder().decode(Cache.self, from: data) else { return }
         segments = cache.segments

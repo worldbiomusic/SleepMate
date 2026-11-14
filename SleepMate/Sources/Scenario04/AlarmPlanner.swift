@@ -18,8 +18,8 @@ enum AlarmPlanner {
     /// 순수 계산 (화면에서 자주 불러도 됨 — 기록은 남기지 않음)
     static func plan(profile p: UserProfile, tomorrowItems: [PlanItem]) -> Plan {
         let timed = tomorrowItems.filter { !$0.isAllDay }.sorted { $0.start < $1.start }
-        // 첫 일정: 고정 일정 우선, 없으면 아무 일정
-        let first = timed.first(where: { $0.isFixed }) ?? timed.first
+        // 첫 일정 = 가장 이른 일정 (고정이든 아니든 기상 제약)
+        let first = timed.first
         var wake: Int
         var reason: String
         var clamped = false
@@ -129,7 +129,7 @@ struct AlarmView: View {
 
     private var tomorrowSection: some View {
         Section {
-            if !calendar.isAuthorized && !DemoMode.isOn {
+            if !calendar.canShowItems {
                 Button {
                     Task { await calendar.requestAccess() }
                 } label: {

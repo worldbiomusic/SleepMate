@@ -69,6 +69,7 @@ struct SleepNight: Identifiable {
     let bedtime: Date?
     let wakeTime: Date?
     let hasDetailedStages: Bool
+    let napSleep: TimeInterval          // 밤잠 외 다른 수면(낮잠) 합계
 
     var id: Date { day }
 
@@ -76,30 +77,62 @@ struct SleepNight: Identifiable {
         self.day = day
         self.allSourceNames = Array(Set(rawSegments.map(\.sourceName))).sorted()
 
-        // 아이폰과 워치가 같은 밤을 동시에 기록하면 시간이 이중으로 합산된다.
-        // 단계(코어/깊은/REM)를 기록한 소스(=Apple Watch)가 있으면 그 소스만 사용한다.
+        // 1) 아이폰과 워치가 같은 밤을 동시에 기록하면 시간이 이중으로 합산된다.
+        //    단계(코어/깊은/REM)를 기록한 소스(=Apple Watch)가 있으면 그 소스만 사용한다.
         let stagedSources = Set(rawSegments.filter { $0.stage.isDetailedStage }.map(\.sourceID))
-        let used = stagedSources.isEmpty
+        let used = (stagedSources.isEmpty
             ? rawSegments
-            : rawSegments.filter { stagedSources.contains($0.sourceID) }
+            : rawSegments.filter { stagedSources.contains($0.sourceID) })
+            .sorted { $0.start < $1.start }
 
-        self.segments = used.sorted { $0.start < $1.start }
+        // 2) 90분 넘게 끊기면 다른 수면(낮잠 등)으로 본다. 가장 오래 잔 묶음 = 그날 밤잠.
+        var clusters: [[SleepSegment]] = []
+        var clusterEnd: Date?
+        for seg in used {
+            if let e = clusterEnd, seg.start.timeIntervalSince(e) <= 90 * 60 {
+                clusters[clusters.count - 1].append(seg)
+                clusterEnd = max(e, seg.end)
+            } else {
+                clusters.append([seg])
+                clusterEnd = seg.end
+            }
+        }
+        func asleepOf(_ c: [SleepSegment]) -> TimeInterval {
+            SleepNight.mergedDuration(c.filter { $0.stage.isAsleep }.map { ($0.start, $0.end) })
+        }
+        var mainIndex = 0
+        for (i, c) in clusters.enumerated() where asleepOf(c) > asleepOf(clusters[mainIndex]) {
+            mainIndex = i
+        }
+        let main = clusters.isEmpty ? [] : clusters[mainIndex]
+        var nap: TimeInterval = 0
+        for (i, c) in clusters.enumerated() where i != mainIndex { nap += asleepOf(c) }
+        self.napSleep = nap
+
+        self.segments = main
         self.hasDetailedStages = !stagedSources.isEmpty
 
+        // 3) 단계별 시간 (같은 단계끼리 겹치면 병합)
         var totals: [SleepStage: TimeInterval] = [:]
         for stage in SleepStage.allCases {
-            let intervals = used.filter { $0.stage == stage }.map { ($0.start, $0.end) }
-            let total = Self.mergedDuration(intervals)
+            let intervals = main.filter { $0.stage == stage }.map { ($0.start, $0.end) }
+            let total = SleepNight.mergedDuration(intervals)
             if total > 0 { totals[stage] = total }
+        }
+        // '단계 미상' 구간이 단계 구간과 겹치면 겹치지 않는 부분만 단계 미상으로 센다
+        if totals[.asleepUnspecified] != nil {
+            let detailed = main.filter { $0.stage.isDetailedStage }.map { ($0.start, $0.end) }
+            let unspecified = main.filter { $0.stage == .asleepUnspecified }.map { ($0.start, $0.end) }
+            let extra = SleepNight.mergedDuration(detailed + unspecified) - SleepNight.mergedDuration(detailed)
+            totals[.asleepUnspecified] = extra > 60 ? extra : nil
         }
         self.stageTotals = totals
 
-        let asleepIntervals = used.filter { $0.stage.isAsleep }.map { ($0.start, $0.end) }
-        self.asleep = Self.mergedDuration(asleepIntervals)
+        self.asleep = asleepOf(main)
         self.awake = totals[.awake] ?? 0
         self.inBed = totals[.inBed] ?? 0
 
-        let sleepSegs = used.filter { $0.stage.isAsleep }
+        let sleepSegs = main.filter { $0.stage.isAsleep }
         self.bedtime = sleepSegs.map(\.start).min()
         self.wakeTime = sleepSegs.map(\.end).max()
     }

@@ -19,7 +19,7 @@ struct TodayView: View {
     }
     private var input: DayPlanner.Input {
         DayPlanner.Input(stats: stats, score: score?.total, daily: ctx.today, profile: ctx.profile,
-                         items: items, skipped: { ctx.isOftenSkipped($0) })
+                         items: items, now: AppClock.now, skipped: { ctx.isOftenSkipped($0) })
     }
 
     var body: some View {
@@ -44,7 +44,7 @@ struct TodayView: View {
 
     private func reload() {
         ctx.rollOverIfNeeded()
-        items = calendar.items(on: Date(), fixedKeywords: ctx.profile.fixedKeywords)
+        items = calendar.items(on: AppClock.now, fixedKeywords: ctx.profile.fixedKeywords)
         recs = DayPlanner.recommendations(input)
         markers = DayPlanner.markers(input)
         proposals = DayPlanner.proposals(input)
@@ -113,13 +113,14 @@ struct TodayView: View {
 
     private var flowSection: some View {
         Section {
-            DayTimelineChart(items: items, markers: markers)
+            DayTimelineChart(items: items, markers: markers, now: AppClock.now)
                 .padding(.vertical, 4)
             VStack(alignment: .leading, spacing: 4) {
                 Text("예상 컨디션 흐름").font(.subheadline.weight(.semibold))
                 EnergyCurveChart(points: EnergyModel.curve(wakeMinutes: wakeMinutesToday,
                                                            bedMinutes: ctx.profile.bedtimeMinutes,
-                                                           score: score?.total))
+                                                           score: score?.total),
+                                 now: AppClock.now)
                 Text("생체 리듬과 수면 점수로 만든 단순 추정이에요. 개인차가 있어요.")
                     .font(.caption2).foregroundStyle(.secondary)
             }
@@ -156,7 +157,7 @@ struct TodayView: View {
 
     private var scheduleSection: some View {
         Section {
-            if !calendar.isAuthorized && !DemoMode.isOn {
+            if !calendar.canShowItems {
                 Button {
                     Task { await calendar.requestAccess() }
                 } label: {
@@ -184,7 +185,7 @@ struct TodayView: View {
         } header: {
             Text("오늘 일정")
         } footer: {
-            if calendar.isAuthorized || DemoMode.isOn {
+            if calendar.canShowItems {
                 Text("제목에 ‘수업·회의·약속’ 등이 있거나 참석자가 있으면 고정 일정으로 보고 절대 옮기지 않아요. 키워드는 설정에서 바꿀 수 있어요.")
             }
         }

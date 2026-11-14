@@ -58,6 +58,7 @@ final class CoachStore {
     var errorMessage: String?
     var settings = CoachSettings.load()   // 변경 후 저장은 설정 화면에서 settings.save()
     var hasKey: Bool = KeyStore.load() != nil
+    @ObservationIgnored private var lastStats: SleepStats?
     let speech = SpeechService()
 
     init() {
@@ -69,16 +70,7 @@ final class CoachStore {
 
     /// 수면 기록이 바뀌었을 때 호출. fromImport=true면 설정에 따라 Claude 요약·자동 읽기까지.
     func update(nights: [SleepNight], fromImport: Bool, persist: Bool = true) async {
-        guard let stats = SleepStats(nights: nights) else {
-            report = nil
-            return
-        }
-        // 같은 밤의 Claude 요약이 이미 있고 새로 가져온 게 아니면 그대로 둔다.
-        if !fromImport, let r = report, r.day == stats.day { return }
-
-        setReport(RuleReporter.make(stats), persist: persist)
-        log.add("기본 요약 생성: \(Fmt.day.string(from: stats.day))")
-
+        guard refreshRules(nights: nights, fromImport: fromImport, persist: persist) else { return }
         guard fromImport else { return }
         if settings.autoClaude && hasKey {
             await generateWithClaude(nights: nights)
@@ -86,6 +78,30 @@ final class CoachStore {
         if settings.autoSpeak {
             speak()
         }
+    }
+
+    /// 기본 요약 갱신 (동기). 새로 만들었으면 true
+    @discardableResult
+    func refreshRules(nights: [SleepNight], fromImport: Bool, persist: Bool) -> Bool {
+        guard let stats = SleepStats(nights: nights) else {
+            report = nil
+            lastStats = nil
+            return false
+        }
+        // 같은 밤 요약이 이미 있고 수치도 그대로면 유지 (앱 재시작 직후 lastStats == nil이면 저장된 요약 유지)
+        if !fromImport, let r = report, r.day == stats.day, lastStats == nil || lastStats == stats {
+            lastStats = stats
+            return false
+        }
+        lastStats = stats
+        setReport(RuleReporter.make(stats), persist: persist)
+        log.add("기본 요약 생성: \(Fmt.day.string(from: stats.day))")
+        return true
+    }
+
+    /// 셀프 테스트용 (저장·Claude·음성 없음)
+    func debugUpdateSync(nights: [SleepNight]) {
+        refreshRules(nights: nights, fromImport: false, persist: false)
     }
 
     func generateWithClaude(nights: [SleepNight]) async {

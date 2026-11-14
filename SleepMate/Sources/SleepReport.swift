@@ -91,7 +91,6 @@ enum RuleReporter {
     static func make(_ s: SleepStats) -> SleepReport {
         let dur = { (min: Int) in Fmt.duration(TimeInterval(min * 60)) }
         var summary: [String] = []
-        var recs: [String] = []
 
         // 1) 총 수면
         var first = "\(Fmt.day.string(from: s.day)) 기록으로 \(dur(s.asleepMin)) 주무셨어요"
@@ -128,29 +127,35 @@ enum RuleReporter {
             }
         }
 
-        // 추천
+        // 추천: ① 수면 시간 대응(핵심 2개) → ② 그날 문제에 맞춘 것 → ③ 남는 자리에 보조 추천
+        //  (4개 제한에서 '자주 깸'·'불규칙' 같은 구체적 조언이 잘리지 않도록 순서를 정함)
+        let irregular = (s.bedtimeSpreadMin ?? 0) >= 60 && s.avgBedtimeMin != nil
+        var core: [String] = []
+        var extra: [String] = []
         if s.asleepMin < 6 * 60 {
-            recs.append("오후 2시 이후에는 커피·에너지음료를 피하세요.")
-            recs.append("졸리면 오후 3시 전에 20분 이내로만 낮잠을 자세요.")
+            core.append("오후 2시 이후에는 커피·에너지음료를 피하세요.")
             if let avgBed = s.avgBedtimeMin {
-                recs.append("오늘은 평소(\(clockShort(avgBed)))보다 30분 일찍 잠자리에 들어 보세요.")
+                core.append("오늘은 평소(\(clockShort(avgBed)))보다 30분 일찍 잠자리에 들어 보세요.")
             } else {
-                recs.append("오늘은 평소보다 30분 일찍 잠자리에 들어 보세요.")
+                core.append("오늘은 평소보다 30분 일찍 잠자리에 들어 보세요.")
             }
+            extra.append("졸리면 오후 3시 전에 20분 이내로만 낮잠을 자세요.")
         } else if s.asleepMin > 9 * 60 {
-            recs.append("오래 잤는데도 피곤하다면 아침에 햇빛을 10분 이상 쬐어 보세요.")
-        } else {
-            recs.append("수면 시간은 충분해요. 지금 리듬을 유지하세요.")
+            core.append("오래 잤는데도 피곤하다면 아침에 햇빛을 10분 이상 쬐어 보세요.")
+        } else if !irregular {
+            core.append("수면 시간은 충분해요. 지금 리듬을 유지하세요.")
+        }
+        var specific: [String] = []
+        if s.awakeMin >= 30 {
+            specific.append("자기 1시간 전부터는 휴대폰 화면을 멀리하고 방을 어둡고 서늘하게 해 보세요.")
+        }
+        if irregular, let avgBed = s.avgBedtimeMin {
+            specific.append("이번 주는 매일 \(clockShort(avgBed)) 전후 30분 안에 잠드는 것을 목표로 해 보세요.")
         }
         if s.hasStages && s.deepPct < 10 {
-            recs.append("낮에 30분 정도 걷거나 가볍게 운동하면 깊은 수면에 도움이 돼요. 단, 잠들기 3시간 전에는 피하세요.")
+            specific.append("낮에 30분 정도 걷거나 가볍게 운동하면 깊은 수면에 도움이 돼요. 단, 잠들기 3시간 전에는 피하세요.")
         }
-        if s.awakeMin >= 30 {
-            recs.append("자기 1시간 전부터는 휴대폰 화면을 멀리하고 방을 어둡고 서늘하게 해 보세요.")
-        }
-        if let spread = s.bedtimeSpreadMin, spread >= 60, let avgBed = s.avgBedtimeMin {
-            recs.append("이번 주는 매일 \(clockShort(avgBed)) 전후 30분 안에 잠드는 것을 목표로 해 보세요.")
-        }
+        var recs = core + specific + extra
         if recs.count < 2 {
             recs.append("아침에 일어나면 바로 커튼을 열어 햇빛을 받으세요.")
         }

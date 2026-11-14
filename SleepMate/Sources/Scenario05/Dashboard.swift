@@ -114,9 +114,9 @@ struct DashboardHeader: View {
     }
 
     private func topRecommendation(stats: SleepStats, score: Int) -> DayRecommendation? {
-        let items = calendar.items(on: Date(), fixedKeywords: ctx.profile.fixedKeywords)
+        let items = calendar.items(on: AppClock.now, fixedKeywords: ctx.profile.fixedKeywords)
         let input = DayPlanner.Input(stats: stats, score: score, daily: ctx.today, profile: ctx.profile,
-                                     items: items, skipped: { ctx.isOftenSkipped($0) })
+                                     items: items, now: AppClock.now, skipped: { ctx.isOftenSkipped($0) })
         return DayPlanner.recommendations(input).first { $0.key != "stale" && $0.key != "nodata" }
     }
 }

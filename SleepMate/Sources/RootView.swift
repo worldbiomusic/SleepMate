@@ -9,6 +9,7 @@ enum AppTab: String {
 struct ContentView: View {
     @Environment(SleepStore.self) private var store
     @Environment(ContextStore.self) private var ctx
+    @Environment(CalendarService.self) private var calendar
     @State private var tab: AppTab = {
         if let t = UserDefaults.standard.string(forKey: "demoTab"), let v = AppTab(rawValue: t) { return v }
         return .home
@@ -32,8 +33,22 @@ struct ContentView: View {
                 .tabItem { Label("설정", systemImage: "slider.horizontal.3") }
                 .tag(AppTab.settings)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { TestModeBanner() }
         .environment(\.locale, Locale(identifier: "ko_KR"))   // 차트 축(시각·요일)을 한국어로
         .task {
+            SelfTestCLI.runIfRequested()
+            // CI: -testSleep short -testToday morningFocus -testTomorrow early -testClock evening
+            let d = UserDefaults.standard
+            if let name = d.string(forKey: "testSleep"),
+               let p = SleepPreset.allCases.first(where: { "\($0)" == name }) {
+                let lab = TestLab.shared
+                lab.sleep = p
+                if let n = d.string(forKey: "testToday"), let v = DayPreset.allCases.first(where: { "\($0)" == n }) { lab.today = v }
+                if let n = d.string(forKey: "testTomorrow"), let v = DayPreset.allCases.first(where: { "\($0)" == n }) { lab.tomorrow = v }
+                if let n = d.string(forKey: "testClock"), let v = TestLab.ClockMode.allCases.first(where: { "\($0)" == n }) { lab.clock = v }
+                lab.apply(store: store, ctx: ctx, calendar: calendar)
+                return
+            }
             guard DemoMode.isOn else { return }
             ctx.seedDemo()
             // CI 스크린샷: 홈이 아닌 탭으로 바로 열 때도 데모 데이터 준비

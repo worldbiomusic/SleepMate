@@ -150,8 +150,8 @@ struct WindDownView: View {
         NavigationStack {
             List {
                 Section {
-                    BedtimeCountdown(profile: ctx.profile)
-                    WindDownTimelineChart(profile: ctx.profile)
+                    BedtimeCountdown(profile: ctx.profile, now: AppClock.now)
+                    WindDownTimelineChart(profile: ctx.profile, now: AppClock.now)
                         .padding(.top, 8)
                 } header: {
                     Text("지금")

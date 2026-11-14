@@ -51,7 +51,11 @@ final class CalendarService {
     }
 
     /// 특정 날짜의 일정
+    /// 화면에 일정을 보여줄 수 있는 상태인지 (권한 있음 / 데모 / 테스트)
+    var canShowItems: Bool { isAuthorized || DemoMode.isOn || TestLab.shared.isOn }
+
     func items(on day: Date, fixedKeywords: [String]) -> [PlanItem] {
+        if TestLab.shared.isOn { return TestLab.shared.items(on: day, fixedKeywords: fixedKeywords) }
         if DemoMode.isOn { return DemoData.planItems(on: day, fixedKeywords: fixedKeywords) }
         guard isAuthorized else { return [] }
         let cal = Calendar.current
@@ -84,6 +88,7 @@ final class CalendarService {
     // MARK: 쓰기 (반드시 사용자 승인 후에만 호출 — GUARD)
 
     func move(itemID: String, to newStart: Date) throws {
+        if TestLab.shared.isOn { TestLab.shared.move(id: itemID, to: newStart); revision += 1; return }
         if DemoMode.isOn { revision += 1; return }
         guard let e = store.event(withIdentifier: itemID) else {
             throw NSError(domain: "Calendar", code: 1, userInfo: [NSLocalizedDescriptionKey: "일정을 찾을 수 없습니다."])
@@ -97,6 +102,7 @@ final class CalendarService {
     }
 
     func add(title: String, start: Date, end: Date, note: String) throws {
+        if TestLab.shared.isOn { TestLab.shared.add(title: title, start: start, end: end); revision += 1; return }
         if DemoMode.isOn { revision += 1; return }
         let e = EKEvent(eventStore: store)
         e.title = title

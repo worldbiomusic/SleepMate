@@ -88,6 +88,22 @@ jobs:
           }
 
           xcrun simctl ui "$UDID" appearance light
+
+          # ---- 셀프 테스트 (결과는 마지막 단계에서 판정) ----
+          shoot 0-selftest -runSelfTests YES -demoScreen selftest
+          sleep 3
+          grep "\[SelfTest\]" logs/0-selftest.err > selftest.log || true
+          grep -E "FAIL|SUMMARY" selftest.log || true
+
+          # ---- 테스트 모드 (더미 데이터) ----
+          shoot t1-short-today   -testSleep short -testToday morningFocus -testClock morning -demoTab today
+          shoot t2-short-home    -testSleep short -testToday morningFocus -testClock morning -demoTab home
+          shoot t3-nap-home      -testSleep withNap -testClock morning -demoTab home
+          shoot t4-empty-today   -testSleep empty -testClock morning -demoTab today
+          shoot t5-evening       -testSleep good -testClock evening -demoTab winddown
+          shoot t6-early-alarm   -testSleep good -testTomorrow early -demoTab alarm
+          shoot t7-testlab       -testSleep short -demoScreen testlab
+
           shoot 1-first-launch -demoData YES -demoScreen first
           shoot 2-home     -demoData YES -demoScreen home
           shoot 3-detail   -demoData YES -demoScreen detail
@@ -127,10 +143,19 @@ jobs:
           shoot 7-home-dark -demoData YES -demoScreen home
           ls -l shots
 
+      - name: Self-test result
+        if: always()
+        run: |
+          test -f selftest.log || { echo "셀프 테스트 로그 없음"; exit 1; }
+          cat selftest.log
+          grep -q "SUMMARY" selftest.log || { echo "셀프 테스트가 끝나지 않음"; exit 1; }
+          if grep -q "\[SelfTest\] FAIL" selftest.log; then echo "실패한 셀프 테스트가 있습니다"; exit 1; fi
+
       - name: Publish to `screenshots` branch
         if: always() && hashFiles('shots/*.png') != ''
         run: |
           cp -R shots /tmp/shots
+          cp selftest.log /tmp/shots/selftest.log 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan screenshots
@@ -139,7 +164,9 @@ jobs:
           cp /tmp/shots/*.png .
           printf '# Simulator screenshots\n\nCommit: %s\n\n' "$GITHUB_SHA" > README.md
           for f in *.png; do printf '### %s\n<img src="%s" width="300">\n\n' "$f" "$f" >> README.md; done
+          cp /tmp/shots/selftest.log . 2>/dev/null || true
           git add *.png README.md
+          git add selftest.log 2>/dev/null || true
           git commit -qm "Screenshots for $GITHUB_SHA"
           git push -f origin screenshots
 

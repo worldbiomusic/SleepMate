@@ -185,13 +185,20 @@ enum ClaudeClient {
             .compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }
             .joined()
 
-        // 모델이 앞뒤에 글을 붙여도 JSON 부분만 꺼낸다.
-        guard let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}"),
+        return try parse(text: text, day: s.day, model: model)
+    }
+
+    /// 모델이 앞뒤에 글이나 코드블록을 붙여도 JSON 부분만 꺼내 해석한다.
+    static func parse(text: String, day: Date, model: String) throws -> SleepReport {
+        guard let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}"), start < end,
               let jsonData = String(text[start...end]).data(using: .utf8),
-              let p = try? JSONDecoder().decode(Payload.self, from: jsonData)
+              let p = try? JSONDecoder().decode(Payload.self, from: jsonData),
+              !p.summary.isEmpty, !p.speech.isEmpty
         else { throw ClaudeError.badResponse(text) }
 
-        return SleepReport(day: s.day, source: .claude, model: model,
-                           summary: p.summary, recommendations: p.recommendations, speech: p.speech)
+        return SleepReport(day: day, source: .claude, model: model,
+                           summary: p.summary,
+                           recommendations: Array(p.recommendations.filter { !$0.isEmpty }.prefix(5)),
+                           speech: p.speech)
     }
 }

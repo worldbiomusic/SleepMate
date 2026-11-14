@@ -116,15 +116,41 @@ final class ContextStore {
             .appendingPathComponent("context.json")
     }
 
+    /// 테스트 모드 중에는 저장하지 않는다
+    private(set) var isTest = false
+
     init() {
+        load()
+    }
+
+    private func load() {
         if let d = try? Data(contentsOf: url), let s = try? JSONDecoder().decode(Saved.self, from: d) {
             profile = s.profile
             today = s.today
             history = s.history
             feedback = s.feedback
+        } else {
+            today = DailyContext(date: Calendar.current.startOfDay(for: Date()))
+            history = []
+            feedback = []
         }
         rollOverIfNeeded()
         syncScreenCountFromNotifications()
+    }
+
+    func beginTest(fatigue: Int?, mood: Mood?, screenCount: Int) {
+        isTest = true
+        let day = Calendar.current.startOfDay(for: Date())
+        today = DailyContext(date: day, fatigue: fatigue, mood: mood, screenCount: screenCount)
+        let samples = [42, 65, 30, 55, 48, 71]
+        history = samples.enumerated().map { i, n in
+            DailyContext(date: day.addingTimeInterval(-Double(i + 1) * 86400), screenCount: n)
+        }
+    }
+
+    func endTest() {
+        isTest = false
+        load()
     }
 
     /// 날짜가 바뀌면 오늘 Context를 기록으로 넘기고 새로 시작
@@ -138,6 +164,7 @@ final class ContextStore {
     }
 
     func save() {
+        guard !isTest else { return }
         let s = Saved(profile: profile, today: today, history: history, feedback: Array(feedback.suffix(500)))
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -185,7 +212,7 @@ final class ContextStore {
     func addScreen(_ n: Int) {
         rollOverIfNeeded()
         today.screenCount = max(0, today.screenCount + n)
-        UserDefaults.standard.set(today.screenCount, forKey: Self.screenKey(for: today.date))
+        if !isTest { UserDefaults.standard.set(today.screenCount, forKey: Self.screenKey(for: today.date)) }
         save()
     }
 

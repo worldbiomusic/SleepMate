@@ -142,6 +142,11 @@ struct SettingsView: View {
 
     private var systemSection: some View {
         Section {
+            NavigationLink {
+                TestLabView()
+            } label: {
+                Label("테스트 · 더미 데이터 · 셀프 테스트", systemImage: "testtube.2")
+            }
             Button("AI 요약 설정 (Claude)") { showCoach = true }
             Button("단축어 설정 방법") { showGuide = true }
             HStack {

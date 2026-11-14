@@ -148,8 +148,9 @@ struct HomeView: View {
             }
             // 새 기록이 들어오면 요약 갱신 (단축어로 가져온 경우 설정에 따라 Claude 요약·자동 읽기)
             .onChange(of: store.lastLoadedAt) { _, _ in
-                let real = !store.isDemo
-                Task { await coach.update(nights: store.nights, fromImport: real, persist: real) }
+                let imported = store.lastChangeWasImport
+                let persist = !store.isDemo
+                Task { await coach.update(nights: store.nights, fromImport: imported, persist: persist) }
             }
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: [.xml, .data],
@@ -161,6 +162,10 @@ struct HomeView: View {
             .navigationDestination(item: $demoDestination) { screen in
                 if screen == "log" {
                     LogView()
+                } else if screen == "selftest" {
+                    SelfTestView()
+                } else if screen == "testlab" {
+                    TestLabView()
                 } else if screen == "report" {
                     SleepReportView()
                 } else if screen == "coach" {
@@ -260,6 +265,11 @@ struct LatestNightCard: View {
                 Text("\(Fmt.time.string(from: bed)) → \(Fmt.time.string(from: wake))")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+            }
+
+            if night.napSleep >= 5 * 60 {
+                Label("낮잠 \(Fmt.duration(night.napSleep))은 밤잠과 따로 계산했어요", systemImage: "sun.haze")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             HypnogramChart(night: night)
