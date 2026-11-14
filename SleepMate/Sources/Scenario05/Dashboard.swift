@@ -54,9 +54,11 @@ struct DashboardHeader: View {
                             .font(.title2.weight(.bold))
                         if let avg = s.avg7AsleepMin, s.nightsIn7 >= 3 {
                             let diff = s.asleepMin - avg
-                            Text(diff >= 0 ? "최근 평균보다 +\(Clock.durationText(diff))"
-                                           : "최근 평균보다 \(Clock.durationText(-diff)) 짧아요")
-                                .font(.footnote).foregroundStyle(diff >= 0 ? .green : .orange)
+                            Text(abs(diff) < 10 ? "최근 평균과 비슷해요"
+                                 : (diff > 0 ? "최근 평균보다 +\(Clock.durationText(diff))"
+                                             : "최근 평균보다 \(Clock.durationText(-diff)) 짧아요"))
+                                .font(.footnote)
+                                .foregroundStyle(abs(diff) < 10 ? Color.secondary : (diff > 0 ? Color.green : Color.orange))
                         }
                     }
                 }

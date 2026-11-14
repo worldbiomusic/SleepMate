@@ -82,7 +82,7 @@ struct DayTimelineChart: View {
                 RuleMark(x: .value("지금", now))
                     .foregroundStyle(.red)
                     .lineStyle(StrokeStyle(lineWidth: 1.5))
-                    .annotation(position: .bottom) {
+                    .annotation(position: .top, alignment: .leading, spacing: 0) {
                         Text("지금").font(.caption2.weight(.bold)).foregroundStyle(.red)
                     }
             }
