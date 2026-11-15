@@ -18,6 +18,7 @@ struct SleepStats: Codable, Equatable {
     let bedtimeSpreadMin: Int?       // 취침 시각 표준편차(분)
     let daysSinceLastNight: Int
     let napMin: Int                  // 기상일의 낮잠 (밤잠과 따로)
+    let napBeforeMin: Int            // 잠들기 전날 낮잠 (그날 밤 수면에 영향)
 
     init?(nights: [SleepNight], now: Date = Date(), calendar: Calendar = .current) {
         guard let last = nights.first, last.asleep > 0 else { return nil }
@@ -34,6 +35,8 @@ struct SleepStats: Codable, Equatable {
         bedtime = last.bedtime
         wakeTime = last.wakeTime
         napMin = m(last.napSleep)
+        let dayBefore = calendar.date(byAdding: .day, value: -1, to: last.day) ?? last.day
+        napBeforeMin = m(nights.dropFirst().first { calendar.isDate($0.day, inSameDayAs: dayBefore) }?.napSleep)
 
         let window = nights.filter {
             $0.asleep > 0 && $0.day > last.day.addingTimeInterval(-7 * 86400)

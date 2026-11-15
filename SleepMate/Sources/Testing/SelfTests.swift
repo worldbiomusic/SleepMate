@@ -663,6 +663,13 @@ extension SelfTestSuite {
         let cut: [String: Any] = ["stop_reason": "max_tokens", "content": [["type": "text", "text": "{\"summary\": \"잘린"]]]
         t.check("잘린 응답 → 오류", (try? ClaudeClient.parseResponse(cut, day: today, model: "m")) == nil)
 
+        if let ns = SleepStats(nights: nights(.withNap), now: at(0, 9)) {
+            t.equal("전날 낮잠 40분 → 요약 입력에 포함", ns.napBeforeMin, 40)
+            t.check("Claude 입력에 낮잠", ClaudeClient.userMessage(ns).contains("nap_yesterday_before_last_night"))
+        }
+        if let gs = SleepStats(nights: nights(.good), now: at(0, 9)) {
+            t.check("낮잠 없으면 입력에 없음", !ClaudeClient.userMessage(gs).contains("nap_"))
+        }
         t.equal("시간 문자열 7:15", SleepStats.hm(435), "7시간 15분")
         t.equal("시간 문자열 7:00", SleepStats.hm(420), "7시간")
         t.equal("시간 문자열 45분", SleepStats.hm(45), "45분")

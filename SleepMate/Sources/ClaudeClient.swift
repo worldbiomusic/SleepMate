@@ -117,7 +117,7 @@ enum ClaudeClient {
     규칙:
     - 의료 진단을 하거나 질병을 추정하지 마세요. 원인을 단정하지 말고 "~일 수 있어요"처럼 말하세요.
     - 수치는 주어진 값만 사용하고 지어내지 마세요. 시간은 주어진 문자열("7시간 15분")을 그대로 옮기고, 분으로 바꾸거나 다시 계산하지 마세요. 데이터가 부족하면 그렇다고 말하세요.
-    - nap(낮잠)이 있으면 밤잠과 따로 짧게 언급하세요.
+    - 낮잠(nap_yesterday_before_last_night, nap_today)이 있으면 밤잠과 따로 짧게 언급하세요. 낮잠 항목이 없으면 낮잠 이야기는 하지 마세요.
     - daysSinceLastNight가 2 이상이면 최근 기록이 오래됐다고 먼저 알려주세요.
     - 추천은 3개, 각 한 문장, 가능하면 구체적인 시각이나 시간(예: "오후 2시 이후", "20분")을 넣으세요.
     - speech는 아침에 음성으로 읽어줄 30초 분량(공백 포함 200자 이내, 4문장 이내)의 자연스러운 구어체입니다. 핵심 수치 1~2개와 가장 중요한 추천 1개만 말하세요. 숫자는 "6시간 20분"처럼 읽기 쉽게, 기호·이모지·괄호는 쓰지 마세요.
@@ -158,7 +158,8 @@ enum ClaudeClient {
             dict["rem"] = "\(hm(s.remMin)) (\(s.remPct)%)"
             dict["core"] = hm(s.coreMin)
         }
-        if s.napMin >= 5 { dict["nap"] = hm(s.napMin) }
+        if s.napMin >= 5 { dict["nap_today"] = hm(s.napMin) }
+        if s.napBeforeMin >= 5 { dict["nap_yesterday_before_last_night"] = hm(s.napBeforeMin) }
         if let b = s.bedtime { dict["bedtime"] = Fmt.time.string(from: b) }
         if let w = s.wakeTime { dict["wakeTime"] = Fmt.time.string(from: w) }
         if let a = s.avg7AsleepMin {
