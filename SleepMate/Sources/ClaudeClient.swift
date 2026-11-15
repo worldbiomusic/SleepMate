@@ -120,9 +120,23 @@ enum ClaudeClient {
     - daysSinceLastNight가 2 이상이면 최근 기록이 오래됐다고 먼저 알려주세요.
     - 추천은 3개, 각 한 문장, 가능하면 구체적인 시각이나 시간(예: "오후 2시 이후", "20분")을 넣으세요.
     - speech는 아침에 음성으로 읽어줄 30초 이내 분량의 자연스러운 구어체입니다. 숫자는 "6시간 20분"처럼 읽기 쉽게, 기호·이모지·괄호는 쓰지 마세요.
-    반드시 아래 JSON 객체 하나만 출력하세요 (설명이나 코드블록 없이):
-    {"summary": "2~3문장 요약", "recommendations": ["추천1", "추천2", "추천3"], "speech": "음성 원고"}
+    결과는 반드시 sleep_report 도구로 제출하세요. (summary: 2~3문장 요약, recommendations: 추천 3개, speech: 음성 원고)
     """
+
+    /// 도구 형식으로 받으면 항상 정해진 JSON 구조가 온다 (자유 글 해석 실패 방지)
+    static let reportTool: [String: Any] = [
+        "name": "sleep_report",
+        "description": "지난밤 수면 요약과 오늘의 추천을 제출합니다.",
+        "input_schema": [
+            "type": "object",
+            "properties": [
+                "summary": ["type": "string", "description": "2~3문장 한국어 요약"],
+                "recommendations": ["type": "array", "items": ["type": "string"], "description": "오늘 실천할 추천 3개, 각 한 문장"],
+                "speech": ["type": "string", "description": "30초 이내 음성 원고 (구어체, 기호·이모지 없이)"],
+            ],
+            "required": ["summary", "recommendations", "speech"],
+        ],
+    ]
 
     static func userMessage(_ s: SleepStats, now: Date = Date()) -> String {
         let f = DateFormatter()
@@ -171,8 +185,10 @@ enum ClaudeClient {
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         let body: [String: Any] = [
             "model": model,
-            "max_tokens": 1024,
+            "max_tokens": 2000,
             "system": systemPrompt,
+            "tools": [reportTool],
+            "tool_choice": ["type": "tool", "name": "sleep_report"],
             "messages": [["role": "user", "content": userMessage(s)]],
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -186,11 +202,24 @@ enum ClaudeClient {
                 ?? String(data: data, encoding: .utf8) ?? ""
             throw ClaudeError.http(code, msg)
         }
-        let text = ((obj?["content"] as? [[String: Any]]) ?? [])
-            .compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }
-            .joined()
+        return try parseResponse(obj ?? [:], day: s.day, model: model)
+    }
 
-        return try parse(text: text, day: s.day, model: model)
+    /// Messages API 응답 → 리포트. 도구 입력(tool_use)을 우선 쓰고, 없으면 글에서 JSON을 찾는다.
+    static func parseResponse(_ obj: [String: Any], day: Date, model: String) throws -> SleepReport {
+        let blocks = (obj["content"] as? [[String: Any]]) ?? []
+        if let input = blocks.first(where: { $0["type"] as? String == "tool_use" })?["input"] as? [String: Any],
+           let summary = input["summary"] as? String, !summary.isEmpty {
+            let recs = (input["recommendations"] as? [String]) ?? []
+            let speech = (input["speech"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? summary
+            return SleepReport(day: day, source: .claude, model: model, summary: summary,
+                               recommendations: Array(recs.filter { !$0.isEmpty }.prefix(5)), speech: speech)
+        }
+        let text = blocks.compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }.joined()
+        if obj["stop_reason"] as? String == "max_tokens" {
+            throw ClaudeError.badResponse("답변이 길이 제한에서 잘렸어요: " + text)
+        }
+        return try parse(text: text, day: day, model: model)
     }
 
     /// 모델이 앞뒤에 글이나 코드블록을 붙여도 JSON 부분만 꺼내 해석한다.

@@ -651,6 +651,18 @@ extension SelfTestSuite {
     // MARK: 노션 할 일 (페이지 블록 · DB · 추천 시간)
 
     static func notionTests(_ t: TestRecorder) {
+        t.group = "Claude 응답 형식"
+        let toolResp: [String: Any] = ["stop_reason": "tool_use", "content": [
+            ["type": "tool_use", "name": "sleep_report",
+             "input": ["summary": "요약 \"따옴표\" 포함", "recommendations": ["a", "b", ""], "speech": "음성"]]]]
+        let tr = try? ClaudeClient.parseResponse(toolResp, day: today, model: "m")
+        t.equal("도구 응답 → 요약", tr?.summary ?? "", "요약 \"따옴표\" 포함")
+        t.equal("도구 응답 → 빈 추천 제거", tr?.recommendations.count ?? 0, 2)
+        let textResp: [String: Any] = ["content": [["type": "text", "text": "{\"summary\":\"s\",\"recommendations\":[\"r\"],\"speech\":\"v\"}"]]]
+        t.check("글 응답도 해석", (try? ClaudeClient.parseResponse(textResp, day: today, model: "m")) != nil)
+        let cut: [String: Any] = ["stop_reason": "max_tokens", "content": [["type": "text", "text": "{\"summary\": \"잘린"]]]
+        t.check("잘린 응답 → 오류", (try? ClaudeClient.parseResponse(cut, day: today, model: "m")) == nil)
+
         t.group = "노션 할 일"
         let now = at(0, 9)
         let f = DateFormatter()
