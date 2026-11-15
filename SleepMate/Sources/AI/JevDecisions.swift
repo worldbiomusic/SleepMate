@@ -279,6 +279,12 @@ enum JevDecisions {
     /// true면 Claude로 자세한 요약을 만들 가치가 있는 날
     static func shouldUseLLM(_ s: SleepStats) async -> Bool {
         guard available, config.useLLMGate else { return true }      // 게이트를 안 쓰면 항상 Claude
+        // 확실한 경우(오래된 기록·수면 부족·큰 변화·불규칙)는 규칙이 바로 결정하고,
+        // 애매한 날만 Jev에게 묻는다. (라이브 테스트에서 Jev가 오래된 기록·불규칙 취침을 '평범'으로 본 사례)
+        if llmGateRule(s) {
+            AgentLog.shared.add(.morning, path: .rule, action: "Claude 요약 필요 (규칙: 뚜렷한 변화)")
+            return true
+        }
         do {
             let a = try await JevClient.decide(
                 state: ["asleep_minutes": s.asleepMin, "avg_asleep_minutes_7d": s.avg7AsleepMin ?? -1,

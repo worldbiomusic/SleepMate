@@ -663,6 +663,13 @@ extension SelfTestSuite {
         let cut: [String: Any] = ["stop_reason": "max_tokens", "content": [["type": "text", "text": "{\"summary\": \"잘린"]]]
         t.check("잘린 응답 → 오류", (try? ClaudeClient.parseResponse(cut, day: today, model: "m")) == nil)
 
+        t.equal("시간 문자열 7:15", SleepStats.hm(435), "7시간 15분")
+        t.equal("시간 문자열 7:00", SleepStats.hm(420), "7시간")
+        t.equal("시간 문자열 45분", SleepStats.hm(45), "45분")
+        let long = String(repeating: "가나다라마바사아자차. ", count: 30)
+        t.check("긴 음성 원고 → 220자 이내로 자름", ClaudeClient.trimSpeech(long).count <= 220)
+        t.equal("짧은 음성 원고는 그대로", ClaudeClient.trimSpeech("짧아요."), "짧아요.")
+
         t.group = "노션 할 일"
         let now = at(0, 9)
         let f = DateFormatter()

@@ -17,6 +17,7 @@ struct SleepStats: Codable, Equatable {
     let avgBedtimeMin: Int?          // 18:00 기준 분 (예: 330 = 23:30)
     let bedtimeSpreadMin: Int?       // 취침 시각 표준편차(분)
     let daysSinceLastNight: Int
+    let napMin: Int                  // 기상일의 낮잠 (밤잠과 따로)
 
     init?(nights: [SleepNight], now: Date = Date(), calendar: Calendar = .current) {
         guard let last = nights.first, last.asleep > 0 else { return nil }
@@ -32,6 +33,7 @@ struct SleepStats: Codable, Equatable {
         hasStages = last.hasDetailedStages
         bedtime = last.bedtime
         wakeTime = last.wakeTime
+        napMin = m(last.napSleep)
 
         let window = nights.filter {
             $0.asleep > 0 && $0.day > last.day.addingTimeInterval(-7 * 86400)
@@ -65,6 +67,13 @@ struct SleepStats: Codable, Equatable {
         let ampm = h < 12 ? "오전" : "오후"
         let h12 = h % 12 == 0 ? 12 : h % 12
         return mm == 0 ? "\(ampm) \(h12)시" : "\(ampm) \(h12)시 \(mm)분"
+    }
+
+    /// "7시간 15분", "7시간", "45분" — Claude에 계산된 문자열을 그대로 줘서 숫자 실수를 막는다
+    static func hm(_ m: Int) -> String {
+        let h = m / 60, mm = m % 60
+        if h == 0 { return "\(mm)분" }
+        return mm == 0 ? "\(h)시간" : "\(h)시간 \(mm)분"
     }
 
     var deepPct: Int { asleepMin > 0 ? deepMin * 100 / asleepMin : 0 }

@@ -141,7 +141,9 @@ enum LiveAPIFullTests {
                 let e = ms(since: t)
                 let all = r.summary + " " + r.recommendations.joined(separator: " ") + " " + r.speech
                 let h = stats.asleepMin / 60
-                let mentionsHours = r.summary.contains("\(h)시간") || r.summary.contains("\(h + 1)시간")
+                let asleepText = SleepStats.hm(stats.asleepMin)
+                let mentionsHours = r.summary.contains(asleepText)
+                let speechNumbersOK = !r.speech.contains("시간") || r.speech.contains(asleepText) || !r.speech.contains("\(h)시간")
                 let badWord = banned.first { all.contains($0) }
                 let speechSymbols = r.speech.unicodeScalars.contains { $0.properties.isEmojiPresentation || "()[]{}*#%~".unicodeScalars.contains($0) }
                 info("[\(p.rawValue)] \(e)ms · 실제 수면 \(h)시간 \(stats.asleepMin % 60)분 · Jev 게이트: \(gate ? "Claude 호출" : "생략")")
@@ -149,7 +151,12 @@ enum LiveAPIFullTests {
                 for (i, rec) in r.recommendations.enumerated() { info("   추천\(i + 1): \(rec)") }
                 info("   음성: \(r.speech)")
                 check("[\(p.rawValue)] 추천 3개", r.recommendations.count == 3, "\(r.recommendations.count)개")
-                check("[\(p.rawValue)] 수면 시간을 숫자 그대로 언급", mentionsHours, "\(h)시간")
+                check("[\(p.rawValue)] 요약에 수면 시간 정확히 (\(asleepText))", mentionsHours)
+                check("[\(p.rawValue)] 음성의 수면 시간도 정확", speechNumbersOK)
+                check("[\(p.rawValue)] ‘분’ 환산 중복 없음 (예: 435분)", !r.summary.contains("\(stats.asleepMin)분"))
+                let expectGate = [.short, .fragmented, .irregular, .stale].contains(p)
+                check("[\(p.rawValue)] Claude 호출 판단 \(expectGate ? "호출" : "생략")", gate == expectGate)
+                if p == .withNap { check("[낮잠] 낮잠 언급", all.contains("낮잠")) }
                 check("[\(p.rawValue)] 진단·질병 단어 없음", badWord == nil, badWord ?? "")
                 check("[\(p.rawValue)] 음성 원고에 기호·이모지 없음", !speechSymbols)
                 check("[\(p.rawValue)] 음성 원고 30초 분량 (≤ 220자)", r.speech.count <= 220, "\(r.speech.count)자")

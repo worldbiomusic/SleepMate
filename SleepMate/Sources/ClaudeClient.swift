@@ -116,10 +116,11 @@ enum ClaudeClient {
     당신은 'SleepMate'라는 수면 코치입니다. 사용자의 Apple Watch 수면 통계를 보고 한국어로 짧고 따뜻하게 요약하고, 오늘 하루 실천할 행동을 추천합니다.
     규칙:
     - 의료 진단을 하거나 질병을 추정하지 마세요. 원인을 단정하지 말고 "~일 수 있어요"처럼 말하세요.
-    - 수치는 주어진 값만 사용하고 지어내지 마세요. 데이터가 부족하면 그렇다고 말하세요.
+    - 수치는 주어진 값만 사용하고 지어내지 마세요. 시간은 주어진 문자열("7시간 15분")을 그대로 옮기고, 분으로 바꾸거나 다시 계산하지 마세요. 데이터가 부족하면 그렇다고 말하세요.
+    - nap(낮잠)이 있으면 밤잠과 따로 짧게 언급하세요.
     - daysSinceLastNight가 2 이상이면 최근 기록이 오래됐다고 먼저 알려주세요.
     - 추천은 3개, 각 한 문장, 가능하면 구체적인 시각이나 시간(예: "오후 2시 이후", "20분")을 넣으세요.
-    - speech는 아침에 음성으로 읽어줄 30초 이내 분량의 자연스러운 구어체입니다. 숫자는 "6시간 20분"처럼 읽기 쉽게, 기호·이모지·괄호는 쓰지 마세요.
+    - speech는 아침에 음성으로 읽어줄 30초 분량(공백 포함 200자 이내, 4문장 이내)의 자연스러운 구어체입니다. 핵심 수치 1~2개와 가장 중요한 추천 1개만 말하세요. 숫자는 "6시간 20분"처럼 읽기 쉽게, 기호·이모지·괄호는 쓰지 마세요.
     결과는 반드시 sleep_report 도구로 제출하세요. (summary: 2~3문장 요약, recommendations: 추천 3개, speech: 음성 원고)
     """
 
@@ -132,7 +133,7 @@ enum ClaudeClient {
             "properties": [
                 "summary": ["type": "string", "description": "2~3문장 한국어 요약"],
                 "recommendations": ["type": "array", "items": ["type": "string"], "description": "오늘 실천할 추천 3개, 각 한 문장"],
-                "speech": ["type": "string", "description": "30초 이내 음성 원고 (구어체, 기호·이모지 없이)"],
+                "speech": ["type": "string", "description": "30초 음성 원고: 공백 포함 200자 이내, 4문장 이내, 구어체, 기호·이모지 없이"],
             ],
             "required": ["summary", "recommendations", "speech"],
         ],
@@ -142,26 +143,33 @@ enum ClaudeClient {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ko_KR")
         f.dateFormat = "yyyy-MM-dd (E) a h:mm"
+        let hm = SleepStats.hm
         var dict: [String: Any] = [
             "now": f.string(from: now),
             "night_wakeDate": Fmt.day.string(from: s.day),
             "daysSinceLastNight": s.daysSinceLastNight,
-            "asleepMinutes": s.asleepMin,
+            "asleep": hm(s.asleepMin),
+            "awake_during_night": hm(s.awakeMin),
             "hasStageData": s.hasStages,
-            "deepMinutes": s.deepMin,
-            "coreMinutes": s.coreMin,
-            "remMinutes": s.remMin,
-            "unspecifiedSleepMinutes": s.unspecifiedMin,
-            "awakeMinutes": s.awakeMin,
-            "deepPercent": s.deepPct,
-            "remPercent": s.remPct,
             "nightsInLast7Days": s.nightsIn7,
         ]
+        if s.hasStages {
+            dict["deep"] = "\(hm(s.deepMin)) (\(s.deepPct)%)"
+            dict["rem"] = "\(hm(s.remMin)) (\(s.remPct)%)"
+            dict["core"] = hm(s.coreMin)
+        }
+        if s.napMin >= 5 { dict["nap"] = hm(s.napMin) }
         if let b = s.bedtime { dict["bedtime"] = Fmt.time.string(from: b) }
         if let w = s.wakeTime { dict["wakeTime"] = Fmt.time.string(from: w) }
-        if let a = s.avg7AsleepMin { dict["avgAsleepMinutesLast7"] = a }
+        if let a = s.avg7AsleepMin {
+            dict["avgAsleepLast7"] = hm(a)
+            let diff = s.asleepMin - a
+            dict["vsAverage"] = diff == 0 ? "평균과 같음" : "평균보다 \(hm(abs(diff))) \(diff > 0 ? "많음" : "적음")"
+        }
         if let a = s.avgBedtimeMin { dict["avgBedtimeLast7"] = SleepStats.clock(fromMinutesAfter18: a) }
-        if let sp = s.bedtimeSpreadMin { dict["bedtimeStdDevMinutes"] = sp }
+        if let sp = s.bedtimeSpreadMin {
+            dict["bedtimeVariability"] = "표준편차 \(hm(sp))" + (sp >= 60 ? " (불규칙)" : sp <= 20 ? " (규칙적)" : "")
+        }
 
         let json = (try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
@@ -213,13 +221,27 @@ enum ClaudeClient {
             let recs = (input["recommendations"] as? [String]) ?? []
             let speech = (input["speech"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? summary
             return SleepReport(day: day, source: .claude, model: model, summary: summary,
-                               recommendations: Array(recs.filter { !$0.isEmpty }.prefix(5)), speech: speech)
+                               recommendations: Array(recs.filter { !$0.isEmpty }.prefix(5)),
+                               speech: trimSpeech(speech))
         }
         let text = blocks.compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }.joined()
         if obj["stop_reason"] as? String == "max_tokens" {
             throw ClaudeError.badResponse("답변이 길이 제한에서 잘렸어요: " + text)
         }
         return try parse(text: text, day: day, model: model)
+    }
+
+    /// 음성 원고가 너무 길면(30초 초과) 문장 경계에서 자른다
+    static func trimSpeech(_ s: String, limit: Int = 220) -> String {
+        guard s.count > limit else { return s }
+        var out = ""
+        for sentence in s.split(separator: ".", omittingEmptySubsequences: true) {
+            let next = out + sentence.trimmingCharacters(in: .whitespaces) + ". "
+            if next.count > limit { break }
+            out = next
+        }
+        let r = out.trimmingCharacters(in: .whitespaces)
+        return r.isEmpty ? String(s.prefix(limit)) : r
     }
 
     /// 모델이 앞뒤에 글이나 코드블록을 붙여도 JSON 부분만 꺼내 해석한다.
