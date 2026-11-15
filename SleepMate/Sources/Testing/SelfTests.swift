@@ -576,6 +576,10 @@ enum SelfTestCLI {
         FileHandle.standardError.write(Data("[SelfTest] SUMMARY total=\(results.count) failed=\(failed)\n".utf8))
     }
 
+}
+
+@MainActor
+extension SelfTestSuite {
     // MARK: Jev (요청 형식 · 응답 해석 · 규칙 대체)
 
     static func jevTests(_ t: TestRecorder) {
@@ -730,7 +734,7 @@ enum SelfTestCLI {
             let m = Clock.minutes(of: fs)
             t.check("집중 추천은 수업과 안 겹침", !(m < 12 * 60 && m + 60 > 10 * 60), "\(m / 60):\(m % 60)")
             let lvl = curve.min { abs($0.time.timeIntervalSince(fs)) < abs($1.time.timeIntervalSince(fs)) }?.level ?? 0
-            let avg = curve.map(\.level).reduce(0, +) / Double(curve.count)
+            let avg = curve.map { $0.level }.reduce(0, +) / Double(curve.count)
             t.check("집중 추천은 평균 이상 컨디션", lvl >= avg, "level \(Int(lvl)) avg \(Int(avg))")
         } else { t.check("집중 일 추천 시간 있음", false, "nil") }
         t.check("약속은 추천 시간 없음",
