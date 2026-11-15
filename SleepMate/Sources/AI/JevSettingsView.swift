@@ -5,6 +5,7 @@ struct JevSettingsView: View {
     @State private var config = JevConfig.load()
     @State private var keyInput = ""
     @State private var hasKey = JevClient.isConfigured
+    @State private var hasUserKey = SecretStore.load(JevClient.keyAccount) != nil
     @State private var testResult: String?
     @State private var testing = false
     @State private var log = AgentLog.shared
@@ -42,11 +43,26 @@ struct JevSettingsView: View {
                         .font(.caption.monospaced())
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
-                if hasKey {
-                    Label("API 키 저장됨 (이 아이폰 키체인)", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+                if JevClient.usingBuiltIn && !hasUserKey {
+                    Label("기본 키 사용 중 (앱에 포함)", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+                    DisclosureGroup("내 키로 바꾸기") {
+                        SecureField("API 키 붙여넣기", text: $keyInput)
+                            .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        Button("저장") {
+                            SecretStore.save(keyInput, JevClient.keyAccount)
+                            keyInput = ""
+                            hasUserKey = SecretStore.load(JevClient.keyAccount) != nil
+                        }
+                        .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .font(.footnote)
+                } else if hasKey {
+                    Label(hasUserKey ? "내 API 키 저장됨 (이 아이폰 키체인)" : "API 키 저장됨",
+                          systemImage: "checkmark.seal.fill").foregroundStyle(.green)
                     Button("키 삭제", role: .destructive) {
                         SecretStore.delete(JevClient.keyAccount)
-                        hasKey = false
+                        hasUserKey = false
+                        hasKey = JevClient.isConfigured
                     }
                 } else {
                     SecureField("API 키 붙여넣기", text: $keyInput)
@@ -55,6 +71,7 @@ struct JevSettingsView: View {
                         SecretStore.save(keyInput, JevClient.keyAccount)
                         keyInput = ""
                         hasKey = JevClient.isConfigured
+                        hasUserKey = SecretStore.load(JevClient.keyAccount) != nil
                     }
                     .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
                 }

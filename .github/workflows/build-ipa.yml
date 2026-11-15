@@ -32,6 +32,13 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      # repository secrets → 앱 기본 키 (값은 로그에 나오지 않음, 저장소에는 커밋되지 않음)
+      - name: Embed default API keys
+        env:
+          JEV_API_KEY: ${{ secrets.JEV_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+        run: python3 .github/scripts/embed_keys.py SleepMate/Sources/AI/BuiltInKeys.swift
+
       - name: Build (no code signing)
         run: |
           set -o pipefail
@@ -65,12 +72,30 @@ jobs:
           cd dist && zip -qry SleepMate.ipa Payload
           ls -lh SleepMate.ipa
 
+      # IPA 안에 기본 키가 들어 있으므로, IPA_PASSWORD 시크릿이 있으면 암호 zip으로 감싼다.
+      # (public 저장소의 Actions 아티팩트는 로그인한 GitHub 사용자 누구나 받을 수 있음)
+      - name: Protect IPA with password (if IPA_PASSWORD is set)
+        env:
+          IPA_PASSWORD: ${{ secrets.IPA_PASSWORD }}
+        run: |
+          cd dist
+          if [ -n "$IPA_PASSWORD" ]; then
+            zip -q -P "$IPA_PASSWORD" SleepMate-ipa.zip SleepMate.ipa && rm SleepMate.ipa
+            echo "IPA를 암호 zip으로 감쌌습니다."
+          else
+            echo "::warning::IPA_PASSWORD 시크릿이 없어 IPA를 그대로 올립니다 (기본 API 키 포함)."
+          fi
+          ls -lh
+
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: SleepMate-ipa-${{ github.run_number }}
-          path: dist/SleepMate.ipa
-          retention-days: 14
+          path: |
+            dist/SleepMate.ipa
+            dist/SleepMate-ipa.zip
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload build log (on failure)
         if: failure()

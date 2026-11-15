@@ -118,11 +118,17 @@ struct CoachSettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    if coach.hasKey {
-                        Label("API 키 저장됨", systemImage: "checkmark.seal.fill")
+                    if coach.hasKey && !KeyStore.usingBuiltIn {
+                        Label("내 API 키 저장됨", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(.green)
-                        Button("키 삭제", role: .destructive) { coach.deleteKey() }
+                        Button(BuiltInKeys.claude != nil ? "내 키 삭제 (기본 키로 돌아가기)" : "키 삭제",
+                               role: .destructive) { coach.deleteKey() }
                     } else {
+                        if KeyStore.usingBuiltIn {
+                            Label("기본 키 사용 중 (앱에 포함) · 바로 쓸 수 있어요", systemImage: "checkmark.seal.fill")
+                                .foregroundStyle(.green)
+                            Text("내 키를 쓰려면 아래에 넣으세요.").font(.caption).foregroundStyle(.secondary)
+                        }
                         SecureField("sk-ant-api03-…", text: $keyInput)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()

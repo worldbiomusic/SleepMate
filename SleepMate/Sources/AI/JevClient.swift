@@ -128,9 +128,20 @@ struct JevConfig: Codable, Equatable {
     var useLLMGate = true       // 05 Claude 요약이 필요한 날인지
 
     private static let key = "jevConfig"
+
+    /// 기본 키의 제공처에 맞춘 처음 설정
+    static var builtInDefault: JevConfig {
+        var c = JevConfig()
+        if BuiltInKeys.jevProviderHint == "typesafe" {
+            c.provider = .typesafe
+            c.url = Provider.typesafe.defaultURL
+            c.model = Provider.typesafe.defaultModel
+        }
+        return c
+    }
     static func load() -> JevConfig {
         guard let d = UserDefaults.standard.data(forKey: key),
-              let c = try? JSONDecoder().decode(JevConfig.self, from: d) else { return JevConfig() }
+              let c = try? JSONDecoder().decode(JevConfig.self, from: d) else { return .builtInDefault }
         return c
     }
     func save() {
@@ -158,7 +169,10 @@ enum JevError: LocalizedError {
 enum JevClient {
     static let keyAccount = "jev-api-key"
 
-    static var isConfigured: Bool { SecretStore.load(keyAccount) != nil }
+    /// 사용자가 넣은 키 → 없으면 빌드에 포함된 기본 키
+    static var apiKey: String? { SecretStore.load(keyAccount) ?? BuiltInKeys.jev }
+    static var isConfigured: Bool { apiKey != nil }
+    static var usingBuiltIn: Bool { SecretStore.load(keyAccount) == nil && BuiltInKeys.jev != nil }
 
     static func body(model: String, state: Any, questions: [String: JevQuestion]) -> [String: Any] {
         ["model": model, "state": state, "questions": questions.mapValues { $0.json }]
@@ -185,7 +199,7 @@ enum JevClient {
     /// 한 번의 요청에 여러 질문을 함께 보낸다 (질문을 늘려도 응답 시간은 거의 같다)
     static func decide(state: Any, questions: [String: JevQuestion],
                        config: JevConfig = .load(), timeout: TimeInterval = 8) async throws -> [String: JevAnswer] {
-        guard let key = SecretStore.load(keyAccount), let url = URL(string: config.url) else {
+        guard let key = apiKey, let url = URL(string: config.url) else {
             throw JevError.notConfigured
         }
         var req = URLRequest(url: url)

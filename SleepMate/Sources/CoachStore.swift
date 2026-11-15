@@ -155,7 +155,7 @@ final class CoachStore {
 
     func deleteKey() {
         KeyStore.delete()
-        hasKey = false
+        hasKey = KeyStore.load() != nil      // 기본 키가 있으면 그대로 사용
         log.add("API 키 삭제")
     }
 

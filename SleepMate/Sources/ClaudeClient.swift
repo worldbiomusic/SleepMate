@@ -8,7 +8,12 @@ enum KeyStore {
     private static let account = "anthropic-api-key"
     private static let fallbackKey = "claudeAPIKeyFallback"
 
-    static func load() -> String? {
+    /// 사용자가 넣은 키 → 없으면 빌드에 포함된 기본 키
+    static func load() -> String? { userKey() ?? BuiltInKeys.claude }
+
+    static var usingBuiltIn: Bool { userKey() == nil && BuiltInKeys.claude != nil }
+
+    static func userKey() -> String? {
         let q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -94,7 +99,7 @@ enum ClaudeError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noKey: return "Claude API 키가 없습니다. 설정에서 입력해 주세요."
+        case .noKey: return "Claude API 키가 없습니다. (기본 키 없이 빌드됨) 설정에서 입력해 주세요."
         case .http(401, _): return "API 키가 올바르지 않습니다 (401)."
         case .http(429, _): return "요청이 너무 많거나 크레딧이 부족합니다 (429)."
         case .http(529, _): return "Claude 서버가 혼잡합니다. 잠시 후 다시 시도하세요 (529)."
