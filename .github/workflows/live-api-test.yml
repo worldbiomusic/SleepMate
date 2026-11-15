@@ -1,0 +1,71 @@
+name: Live API test
+
+# 빌드에 들어간 기본 키(JEV_API_KEY, CLAUDE_API_KEY)로 앱이 실제 Jev·Claude를 호출하는지 시뮬레이터에서 확인한다.
+# 키 값은 출력하지 않는다. (Actions 탭 → Live API test → Run workflow 로 수동 실행 가능)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "SleepMate/Sources/AI/**"
+      - "SleepMate/Sources/ClaudeClient.swift"
+      - "SleepMate/Sources/Testing/LiveAPITests.swift"
+      - ".github/workflows/live-api-test.yml"
+      - ".github/scripts/embed_keys.py"
+
+concurrency:
+  group: live-api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Generate project
+        run: brew install xcodegen && xcodegen generate
+
+      - name: Embed default API keys
+        env:
+          JEV_API_KEY: ${{ secrets.JEV_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+        run: python3 .github/scripts/embed_keys.py SleepMate/Sources/AI/BuiltInKeys.swift
+
+      - name: Boot simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | jq -r '
+            [.devices | to_entries[] | select(.key | test("iOS")) | .value[]
+             | select(.name | startswith("iPhone"))] | last | .udid')
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project SleepMate.xcodeproj -scheme SleepMate -configuration Debug \
+            -destination "id=$UDID" -derivedDataPath build CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee xcodebuild.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" xcodebuild.log
+
+      - name: Run live API tests
+        run: |
+          xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/SleepMate.app
+          export SIMCTL_CHILD_TZ=Asia/Seoul
+          xcrun simctl launch --stderr="$PWD/live.err" "$UDID" com.jeonghanlee.sleepmate \
+            -AppleLanguages "(ko)" -AppleLocale ko_KR -runLiveAPITests YES -testSleep good
+          for i in $(seq 1 120); do
+            grep -q "\[LiveTest\] SUMMARY" live.err 2>/dev/null && break
+            sleep 1
+          done
+          grep "\[LiveTest\]" live.err || true
+          grep -q "\[LiveTest\] SUMMARY" live.err || { echo "::error::라이브 테스트가 120초 안에 끝나지 않았습니다"; exit 1; }
+          if grep -q "\[LiveTest\] FAIL" live.err; then
+            echo "::error::실패한 항목이 있습니다"; exit 1
+          fi

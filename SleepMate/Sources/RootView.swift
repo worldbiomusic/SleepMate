@@ -37,6 +37,7 @@ struct ContentView: View {
         .environment(\.locale, Locale(identifier: "ko_KR"))   // 차트 축(시각·요일)을 한국어로
         .task {
             SelfTestCLI.runIfRequested()
+            await LiveAPITests.runIfRequested()
             // CI: -testSleep short -testToday morningFocus -testTomorrow early -testClock evening
             let d = UserDefaults.standard
             if let name = d.string(forKey: "testSleep"),
