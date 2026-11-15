@@ -271,7 +271,7 @@ enum SelfTestSuite {
 
         if let s = SleepStats(nights: nights(.short)) {
             let msg = ClaudeClient.userMessage(s)
-            t.check("수치 포함", msg.contains("asleepMinutes"))
+            t.check("수치 포함 (사람이 읽는 시간 문자열)", msg.contains("\"asleep\"") && msg.contains(SleepStats.hm(s.asleepMin)))
             t.check("원시 구간·기기 이름 미포함", !msg.contains("Apple Watch") && !msg.contains("sourceName"))
             if let a = msg.firstIndex(of: "{"), let b = msg.lastIndex(of: "}") {
                 let ok = (try? JSONSerialization.jsonObject(with: Data(msg[a...b].utf8))) != nil
