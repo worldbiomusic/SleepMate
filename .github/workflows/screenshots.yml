@@ -91,8 +91,13 @@ jobs:
 
           # ---- 셀프 테스트 (결과는 마지막 단계에서 판정) ----
           shoot 0-selftest -runSelfTests YES -demoScreen selftest
-          sleep 3
+          for i in $(seq 1 60); do      # 느린 러너에서도 끝날 때까지 기다림
+            grep -q "\[SelfTest\] SUMMARY" logs/0-selftest.err 2>/dev/null && break
+            sleep 1
+          done
+          xcrun simctl io "$UDID" screenshot "shots/0-selftest.png"
           grep "\[SelfTest\]" logs/0-selftest.err > selftest.log || true
+          tail -5 logs/0-selftest.err || true
           grep -E "FAIL|SUMMARY" selftest.log || true
 
           # ---- 테스트 모드 (더미 데이터) ----
