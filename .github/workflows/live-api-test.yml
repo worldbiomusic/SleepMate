@@ -60,12 +60,12 @@ jobs:
           export SIMCTL_CHILD_TZ=Asia/Seoul
           xcrun simctl launch --stderr="$PWD/live.err" "$UDID" com.jeonghanlee.sleepmate \
             -AppleLanguages "(ko)" -AppleLocale ko_KR -runLiveAPITests YES -testSleep good
-          for i in $(seq 1 120); do
-            grep -q "\[LiveTest\] SUMMARY" live.err 2>/dev/null && break
+          for i in $(seq 1 420); do
+            grep -q "\[LiveFull\] SUMMARY" live.err 2>/dev/null && break
             sleep 1
           done
-          grep "\[LiveTest\]" live.err || true
-          grep -q "\[LiveTest\] SUMMARY" live.err || { echo "::error::라이브 테스트가 120초 안에 끝나지 않았습니다"; exit 1; }
-          if grep -q "\[LiveTest\] FAIL" live.err; then
+          grep -E "\[Live(Test|Full)\]" live.err || true
+          grep -q "\[LiveFull\] SUMMARY" live.err || { echo "::error::라이브 테스트가 7분 안에 끝나지 않았습니다"; exit 1; }
+          if grep -qE "\[Live(Test|Full)\] FAIL" live.err; then
             echo "::error::실패한 항목이 있습니다"; exit 1
           fi

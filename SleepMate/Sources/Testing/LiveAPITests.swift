@@ -37,6 +37,7 @@ enum LiveAPITests {
         await jev()
         await claude()
         out("SUMMARY total=\(total) failed=\(failed)")
+        await LiveAPIFullTests.run()
     }
 
     // MARK: Jev

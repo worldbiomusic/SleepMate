@@ -129,7 +129,7 @@ enum JevDecisions {
             "screen_items_watched_tonight": i.screenCount,
             "screen_goal_tonight": i.screenGoal,
             "user_said_stop_for_tonight": i.stopped,
-            "mood": i.mood?.rawValue ?? "unknown",
+            "mood": i.mood?.jevName ?? "unknown",
             "fatigue_1_to_5": i.fatigue ?? 0,
         ]
         let qs: [String: JevQuestion] = [
@@ -187,7 +187,7 @@ enum JevDecisions {
             return TaskClass(kind: .errand, focus: 0, path: .rule)
         }
         if has(["시험", "결혼식", "약속", "발표", "수업", "회의", "미팅", "면접", "모임", "장례", "예식", "진료", "병원",
-                "특강", "세미나", "식사"]) {
+                "특강", "세미나", "식사", "상담", "면담"]) {
             return TaskClass(kind: .appointment, focus: 1, path: .rule)
         }
         return TaskClass(kind: .light, focus: 1, path: .rule)
@@ -250,7 +250,7 @@ enum JevDecisions {
         let options = Dictionary(uniqueKeysWithValues: SoundType.allCases.map { ($0.rawValue, $0.englishHint) })
         do {
             let a = try await JevClient.decide(
-                state: ["mood": mood?.rawValue ?? "unknown", "fatigue_1_to_5": fatigue ?? 0,
+                state: ["mood": mood?.jevName ?? "unknown", "fatigue_1_to_5": fatigue ?? 0,
                         "minutes_until_bedtime": minutesToBed, "user_preference": preference],
                 questions: ["sound": .choice(instructions: "Pick the background sound most likely to help this user fall asleep tonight.",
                                              options: options)])
@@ -309,6 +309,19 @@ enum JevDecisions {
             return "연결은 됐지만 응답 형식이 달라요."
         } catch {
             return "실패: \(error.localizedDescription)"
+        }
+    }
+}
+
+extension Mood {
+    /// Jev는 영어 입력에서 가장 정확하므로 기분은 영어로 보낸다
+    var jevName: String {
+        switch self {
+        case .good: return "good"
+        case .calm: return "calm"
+        case .tired: return "tired"
+        case .stressed: return "stressed"
+        case .anxious: return "anxious"
         }
     }
 }
