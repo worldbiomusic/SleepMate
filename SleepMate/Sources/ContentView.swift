@@ -35,6 +35,8 @@ struct HomeView: View {
                     }
                 }
 
+                SetupChecklist()
+
                 if store.hasData || store.isDemo {
                     Section {
                         DashboardHeader(openToday: openToday)
@@ -168,6 +170,12 @@ struct HomeView: View {
                     TestLabView()
                 } else if screen == "report" {
                     SleepReportView()
+                } else if screen == "jev" {
+                    JevSettingsView()
+                } else if screen == "notion" {
+                    NotionSettingsView()
+                } else if screen == "sound" {
+                    List { SoundscapeSection() }.navigationTitle("수면 사운드")
                 } else if screen == "coach" {
                     List { Section { CoachCard() } }
                         .navigationTitle("수면 코치")

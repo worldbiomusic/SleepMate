@@ -219,4 +219,20 @@ enum TestData {
                      canModify: true, calendarName: "테스트")
         }
     }
+
+    /// 테스트용 노션 할 일 (오늘·내일)
+    static func notion(on day: Date) -> [NotionTask] {
+        let base = Calendar.current.startOfDay(for: day)
+        let isToday = Calendar.current.isDateInToday(day)
+        let rows: [(String, Int?, Bool)] = isToday
+            ? [("AI융합연구 발표 PPT 마무리", nil, false), ("마트: 대파, 두부, 계란", nil, false),
+               ("치과 전화해서 예약", nil, true), ("저녁 운동 30분", nil, false),
+               ("대학원동 1층 특강", 18 * 60, false)]
+            : [("석사 종합시험", 13 * 60 + 20, false), ("시험 범위 복습", nil, false)]
+        return rows.enumerated().map { i, r in
+            NotionTask(id: "test-notion-\(isToday ? "t" : "n")-\(i)", title: r.0, day: base,
+                       time: r.1.map { base.addingTimeInterval(TimeInterval($0 * 60)) }, done: r.2,
+                       cls: JevDecisions.classifyRuleNonisolated(r.0))
+        }
+    }
 }

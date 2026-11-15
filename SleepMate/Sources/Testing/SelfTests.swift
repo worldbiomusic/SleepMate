@@ -42,6 +42,8 @@ enum SelfTestSuite {
         clockTests(t)
         coachTests(t)
         presetTests(t)
+        jevTests(t)
+        notionTests(t)
         return t.results
     }
 
@@ -572,5 +574,167 @@ enum SelfTestCLI {
         }
         let failed = results.filter { !$0.passed }.count
         FileHandle.standardError.write(Data("[SelfTest] SUMMARY total=\(results.count) failed=\(failed)\n".utf8))
+    }
+
+    // MARK: Jev (요청 형식 · 응답 해석 · 규칙 대체)
+
+    static func jevTests(_ t: TestRecorder) {
+        t.group = "Jev 빠른 판단"
+        let body = JevClient.body(model: "jev-latest", state: ["a": 1],
+                                  questions: ["q": .noul(instructions: "nudge?", yes: "y", no: "n"),
+                                              "c": .choice(instructions: "kind", options: ["x": "X", "y": "Y"]),
+                                              "s": .score(instructions: "focus", levels: ["low", "mid", "high"])])
+        let qs = body["questions"] as? [String: Any] ?? [:]
+        t.equal("모델 이름", body["model"] as? String ?? "", "jev-latest")
+        t.equal("질문 3개 인코딩", qs.count, 3)
+        t.equal("noul 타입", (qs["q"] as? [String: Any])?["type"] as? String ?? "", "noul")
+        t.equal("score 단계 수", (((qs["s"] as? [String: Any])?["criteria"]) as? [Any])?.count ?? 0, 3)
+        t.check("JSON 직렬화 가능", JSONSerialization.isValidJSONObject(body))
+
+        let sample = """
+        {"answers":{"nudge":{"type":"noul","noul":0.82,"confidence":0.9},
+         "kind":{"type":"choice","choice":"deep_focus","confidence":0.7,"probabilities":{"deep_focus":0.7,"errand":0.3}},
+         "focus":{"type":"score","score":1.6,"legend":{"0":"low","1":"mid","2":"high"}}}}
+        """
+        if let a = try? JevClient.parse(Data(sample.utf8)) {
+            t.check("noul 확률", abs((a["nudge"]?.noul ?? 0) - 0.82) < 0.001)
+            t.equal("choice 값", a["kind"]?.choice ?? "", "deep_focus")
+            t.check("choice 확률표", abs((a["kind"]?.probabilities["errand"] ?? 0) - 0.3) < 0.001)
+            t.check("score 값", abs((a["focus"]?.score ?? 0) - 1.6) < 0.001)
+        } else { t.check("샘플 응답 해석", false, "parse 실패") }
+        t.check("잘못된 응답 → 오류", (try? JevClient.parse(Data("{}".utf8))) == nil)
+
+        // ① 취침 개입 규칙
+        let calm = JevDecisions.windDownRule(WindDownInput(minutesToBed: 120, screenCount: 2, screenGoal: 10, stopped: false))
+        t.check("여유 있을 때 말 안 걸기", !calm.nudge)
+        let over = JevDecisions.windDownRule(WindDownInput(minutesToBed: 60, screenCount: 15, screenGoal: 10, stopped: false))
+        t.check("목표 초과 → 개입", over.nudge)
+        t.equal("목표 초과 → 단호한 톤", over.tone, .firm)
+        t.equal("목표 초과 → 취침 모드 제안", over.action, .focusMode)
+        let near = JevDecisions.windDownRule(WindDownInput(minutesToBed: 15, screenCount: 3, screenGoal: 10, stopped: false))
+        t.equal("취침 직전 → 호흡", near.action, .breathing)
+        let stopped = JevDecisions.windDownRule(WindDownInput(minutesToBed: 10, screenCount: 20, screenGoal: 10, stopped: true))
+        t.check("이미 멈췄으면 개입 안 함", !stopped.nudge)
+        let anxious = JevDecisions.windDownRule(WindDownInput(minutesToBed: 25, screenCount: 8, screenGoal: 10,
+                                                              stopped: false, mood: .anxious))
+        t.equal("불안 → 수면 사운드", anxious.action, .sound)
+
+        // ② 할 일 분류 규칙
+        t.equal("발표 준비 → 집중", JevDecisions.classifyRule("AI융합연구 발표 PPT 마무리").kind, .deepFocus)
+        t.equal("시험 복습 → 집중", JevDecisions.classifyRule("시험 범위 복습").kind, .deepFocus)
+        t.equal("종합시험 → 약속", JevDecisions.classifyRule("석사 종합시험").kind, .appointment)
+        t.equal("마트 → 볼일", JevDecisions.classifyRule("마트: 대파, 두부").kind, .errand)
+        t.equal("저녁 운동 → 자기 관리", JevDecisions.classifyRule("저녁 운동 30분").kind, .selfCare)
+        t.equal("특강 → 약속", JevDecisions.classifyRule("대학원동 1층 특강").kind, .appointment)
+        t.equal("모르는 일 → 가벼운 일", JevDecisions.classifyRule("이것저것").kind, .light)
+
+        // ③ 사운드 규칙
+        t.equal("스트레스 → 빗소리", JevDecisions.soundRule(mood: .stressed, fatigue: nil, preference: ""), .rain)
+        t.equal("피곤 → 백색소음", JevDecisions.soundRule(mood: .tired, fatigue: nil, preference: ""), .whiteNoise)
+        t.equal("선호 로파이", JevDecisions.soundRule(mood: nil, fatigue: 1, preference: "lofi"), .lofi)
+        t.check("유튜브 링크 2개(앱·웹)", SoundType.rain.youtubeURLs.count == 2)
+        t.check("웹 링크는 https", SoundType.piano.youtubeURLs.last?.scheme == "https")
+
+        // ④ Claude 게이트 규칙
+        if let good = SleepStats(nights: nights(.good)) {
+            t.check("평범한 밤 → Claude 생략", !JevDecisions.llmGateRule(good))
+        } else { t.check("충분 데이터", false, "nil") }
+        if let short = SleepStats(nights: nights(.short)) {
+            t.check("부족한 밤 → Claude 사용", JevDecisions.llmGateRule(short))
+        } else { t.check("부족 데이터", false, "nil") }
+    }
+
+    // MARK: 노션 할 일 (페이지 블록 · DB · 추천 시간)
+
+    static func notionTests(_ t: TestRecorder) {
+        t.group = "노션 할 일"
+        let now = at(0, 9)
+        let f = DateFormatter()
+        f.dateFormat = "M/d"
+        let todayStr = f.string(from: today)
+        let tomorrowStr = f.string(from: today.addingTimeInterval(86400))
+        let oldStr = f.string(from: today.addingTimeInterval(-6 * 86400))
+
+        t.check("제목 날짜 ‘\(todayStr) 월’", NotionParse.headingDate("\(todayStr) 월", now: now) == today)
+        t.check("요일 앞 ‘금\(todayStr)’", NotionParse.headingDate("금\(todayStr)", now: now) == today)
+        t.check("날짜 없는 제목 → nil", NotionParse.headingDate("메모", now: now) == nil)
+        let jan = NotionParse.headingDate("1/3", now: Calendar.current.date(from: DateComponents(year: 2026, month: 12, day: 30))!)
+        t.equal("12월에 본 1/3 → 다음 해", jan.map { Calendar.current.component(.year, from: $0) } ?? 0, 2027)
+
+        func rt(_ s: String, strike: Bool = false) -> [String: Any] {
+            ["type": "text", "plain_text": s, "annotations": ["strikethrough": strike]]
+        }
+        func heading(_ s: String) -> [String: Any] { ["type": "heading_1", "heading_1": ["rich_text": [rt(s)]]] }
+        func todo(_ id: String, _ rich: [[String: Any]], checked: Bool = false) -> [String: Any] {
+            ["id": id, "type": "to_do", "to_do": ["rich_text": rich, "checked": checked]]
+        }
+        let iso = ISO8601DateFormatter()
+        iso.timeZone = .current
+        iso.formatOptions = [.withInternetDateTime]
+        let mentionTime = iso.string(from: at(1, 13, 20))
+        let mention: [String: Any] = ["type": "mention", "plain_text": "@",
+                                      "mention": ["type": "date", "date": ["start": mentionTime]],
+                                      "annotations": ["strikethrough": false]]
+        let blocks: [[String: Any]] = [
+            heading("\(tomorrowStr) 화"),
+            todo("a", [rt("석사 종합시험 "), mention]),
+            todo("b", [rt("시험 범위 복습")]),
+            heading("\(todayStr) 월"),
+            todo("c", [rt("발표 PPT 마무리")]),
+            todo("d", [rt("치과 예약")], checked: true),
+            todo("e", [rt("취소된 약속", strike: true)]),
+            ["type": "paragraph", "paragraph": ["rich_text": [rt("메모")]]],
+            heading("\(oldStr) 화"),
+            todo("f", [rt("오래된 일")]),
+        ]
+        let days: Set<Date> = [today, today.addingTimeInterval(86400)]
+        let r = NotionParse.tasks(fromBlocks: blocks, days: days, carryHeading: nil, now: now)
+        t.equal("오늘·내일 할 일 4개 (취소선 제외)", r.tasks.count, 4)
+        t.check("오래된 제목에서 멈춤", r.shouldStop)
+        t.check("취소선 항목 제외", !r.tasks.contains { $0.id == "e" })
+        t.check("체크 → 완료", r.tasks.first { $0.id == "d" }?.done == true)
+        t.check("날짜 제목 아래 → 그 날짜", r.tasks.first { $0.id == "c" }?.day == today)
+        let exam = r.tasks.first { $0.id == "a" }
+        t.check("멘션 시각 13:20", exam?.time.map { Clock.minutes(of: $0) } == 13 * 60 + 20,
+                "\(String(describing: exam?.time))")
+        t.equal("멘션 제목 정리", exam?.title ?? "", "석사 종합시험")
+
+        // 다음 페이지로 이어지는 제목 (페이지 넘김)
+        let cont = NotionParse.tasks(fromBlocks: [todo("g", [rt("이어지는 일")])], days: days, carryHeading: today, now: now)
+        t.equal("페이지 넘김 뒤에도 날짜 유지", cont.tasks.first?.day, today)
+
+        // 데이터베이스 모드
+        let dbRows: [[String: Any]] = [
+            ["id": "p1", "properties": ["이름": ["type": "title", "title": [rt("보고서 작성")]],
+                                        "날짜": ["type": "date", "date": ["start": iso.string(from: at(0, 15))]],
+                                        "상태": ["type": "status", "status": ["name": "완료"]]]],
+            ["id": "p2", "properties": ["Name": ["type": "title", "title": [rt("다른 날")]],
+                                        "Due": ["type": "date", "date": ["start": "2020-01-01"]]]],
+        ]
+        let db = NotionParse.tasks(fromDatabaseResults: dbRows, days: days)
+        t.equal("DB: 오늘 항목만", db.count, 1)
+        t.check("DB: 상태 ‘완료’ → done", db.first?.done == true)
+
+        // 링크 → ID
+        t.equal("링크에서 ID 추출",
+                NotionParse.id(fromLink: "https://www.notion.so/ws/할-일-3e44fcefFEAF80c29912faf6fe117532?pvs=4") ?? "",
+                "3e44fcefFEAF80c29912faf6fe117532".lowercased())
+        t.check("잘못된 링크 → nil", NotionParse.id(fromLink: "https://notion.so/abc") == nil)
+
+        // 추천 시간: 집중 일 → 컨디션 높은 때, 빈 시간
+        let items = [item("수업", 10, 0, 12, 0)]
+        let curve = EnergyModel.curve(wakeMinutes: 7 * 60, bedMinutes: 23 * 60 + 30, score: 80, day: today)
+        let focus = NotionParse.suggestedSlot(for: TaskClass(kind: .deepFocus, focus: 2, path: .rule),
+                                              items: items, curve: curve, day: today, now: now)
+        if let fs = focus {
+            let m = Clock.minutes(of: fs)
+            t.check("집중 추천은 수업과 안 겹침", !(m < 12 * 60 && m + 60 > 10 * 60), "\(m / 60):\(m % 60)")
+            let lvl = curve.min { abs($0.time.timeIntervalSince(fs)) < abs($1.time.timeIntervalSince(fs)) }?.level ?? 0
+            let avg = curve.map(\.level).reduce(0, +) / Double(curve.count)
+            t.check("집중 추천은 평균 이상 컨디션", lvl >= avg, "level \(Int(lvl)) avg \(Int(avg))")
+        } else { t.check("집중 일 추천 시간 있음", false, "nil") }
+        t.check("약속은 추천 시간 없음",
+                NotionParse.suggestedSlot(for: TaskClass(kind: .appointment, focus: 1, path: .rule),
+                                          items: items, curve: curve, day: today, now: now) == nil)
     }
 }

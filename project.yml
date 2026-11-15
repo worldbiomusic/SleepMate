@@ -37,7 +37,7 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.jeonghanlee.sleepmate
             CFBundleURLSchemes: [sleepmate]
-        LSApplicationQueriesSchemes: [shortcuts]
+        LSApplicationQueriesSchemes: [shortcuts, youtube]
         NSCalendarsFullAccessUsageDescription: "오늘·내일 일정을 보고 행동 추천, 일정 조정안, 기상 알람 시각을 만들기 위해 사용합니다. 일정 변경은 사용자가 '적용'을 눌렀을 때만 합니다."
         NSCalendarsUsageDescription: "오늘·내일 일정을 보고 행동 추천과 기상 알람 시각을 만들기 위해 사용합니다."
         NSHealthShareUsageDescription: "Apple Watch가 기록한 수면 데이터를 읽어 수면 요약과 추천을 만드는 데 사용합니다."

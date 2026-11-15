@@ -103,6 +103,10 @@ jobs:
           shoot t5-evening       -testSleep good -testClock evening -demoTab winddown
           shoot t6-early-alarm   -testSleep good -testTomorrow early -demoTab alarm
           shoot t7-testlab       -testSleep short -demoScreen testlab
+          shoot t8-sound         -testSleep good -testClock evening -demoScreen sound
+          shoot t9-jev           -testSleep good -demoScreen jev
+          shoot t10-notion       -testSleep good -demoScreen notion
+          shoot t11-checklist    -demoTab home
 
           shoot 1-first-launch -demoData YES -demoScreen first
           shoot 2-home     -demoData YES -demoScreen home

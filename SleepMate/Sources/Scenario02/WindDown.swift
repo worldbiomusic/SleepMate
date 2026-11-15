@@ -139,6 +139,7 @@ struct WindDownView: View {
     @Environment(\.openURL) private var openURL
     @State private var scheduledCount: Int?
     @State private var notifAllowed = true
+    @State private var nudge: WindDownDecision?
 
     private var wakeMinutes: Int {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
@@ -156,10 +157,13 @@ struct WindDownView: View {
                 } header: {
                     Text("지금")
                 }
-                timelineSection
+                nudgeSection
                 screenSection
-                lateSection
+                SoundscapeSection()
+                breathingSection
                 prepareSection
+                lateSection
+                timelineSection
                 limitSection
             }
             .navigationTitle("취침 준비")
@@ -273,19 +277,43 @@ struct WindDownView: View {
             }
             Text("단축어 앱에 ‘SleepMate 취침 모드’를 만들어 두면(동작: 집중 모드 설정 → 수면 켜기, 밝기 설정 30%) 이 버튼으로 한 번에 켜져요.")
                 .font(.footnote).foregroundStyle(.secondary)
+        } header: {
+            Text("취침 모드")
+        }
+    }
 
-            let mood = ctx.today.mood
-            ForEach(WindDownPlan.music(for: mood, preference: ctx.profile.musicPreference), id: \.self) { m in
-                Button {
-                    let q = m.query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                    if let u = URL(string: "https://music.youtube.com/search?q=\(q)") { openURL(u) }
-                    ctx.record(scenario: "02", key: "music", title: m.title, response: .accepted)
-                } label: {
-                    Label(m.title, systemImage: "music.note")
+    // AI(Jev 또는 규칙)가 지금 말을 걸지 판단
+    private var nudgeSection: some View {
+        Section {
+            if let n = nudge {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: n.nudge ? "bell.badge.fill" : "moon.zzz")
+                        .font(.title3)
+                        .foregroundStyle(n.nudge ? .orange : .indigo)
+                    Text(n.message).font(.callout).fixedSize(horizontal: false, vertical: true)
                 }
+                DecisionBars(decision: n.view)
+            } else {
+                HStack { ProgressView(); Text("지금 상황을 판단하는 중…").font(.caption) }
             }
         } header: {
-            Text(ctx.today.mood.map { "오늘 기분(\($0.emoji))에 맞는 준비" } ?? "잠들 준비")
+            Text("SleepMate의 한마디")
+        }
+        .task(id: "\(ctx.today.screenCount)-\(ctx.today.stoppedScreen)-\(ctx.today.mood?.rawValue ?? "")") {
+            let rt = RealtimeContext(now: AppClock.now, profile: ctx.profile, todayItems: [])
+            let input = WindDownInput(minutesToBed: rt.minutesToBedtime, screenCount: ctx.today.screenCount,
+                                      screenGoal: ctx.profile.screenGoal, stopped: ctx.today.stoppedScreen,
+                                      mood: ctx.today.mood, fatigue: ctx.today.fatigue)
+            let d = await JevDecisions.windDown(input)
+            withAnimation(.snappy) { nudge = d }
+        }
+    }
+
+    private var breathingSection: some View {
+        Section {
+            BreathingGuide().padding(.vertical, 6)
+        } header: {
+            Text("잠들기 전 1분 호흡")
         }
     }
 

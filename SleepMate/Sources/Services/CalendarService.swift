@@ -55,9 +55,17 @@ final class CalendarService {
     var canShowItems: Bool { isAuthorized || DemoMode.isOn || TestLab.shared.isOn }
 
     func items(on day: Date, fixedKeywords: [String]) -> [PlanItem] {
-        if TestLab.shared.isOn { return TestLab.shared.items(on: day, fixedKeywords: fixedKeywords) }
+        if TestLab.shared.isOn {
+            return (TestLab.shared.items(on: day, fixedKeywords: fixedKeywords)
+                    + NotionStore.shared.planItems(on: day)).sorted { $0.start < $1.start }
+        }
         if DemoMode.isOn { return DemoData.planItems(on: day, fixedKeywords: fixedKeywords) }
-        guard isAuthorized else { return [] }
+        let notion = NotionStore.shared.planItems(on: day)
+        guard isAuthorized else { return notion }
+        return (calendarItems(on: day, fixedKeywords: fixedKeywords) + notion).sorted { $0.start < $1.start }
+    }
+
+    private func calendarItems(on day: Date, fixedKeywords: [String]) -> [PlanItem] {
         let cal = Calendar.current
         let start = cal.startOfDay(for: day)
         guard let end = cal.date(byAdding: .day, value: 1, to: start) else { return [] }

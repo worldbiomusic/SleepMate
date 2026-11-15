@@ -28,6 +28,10 @@ struct TodayView: View {
                 contextSection
                 flowSection
                 recommendationSection
+                NotionTasksSection(items: items,
+                                   curve: EnergyModel.curve(wakeMinutes: wakeMinutesToday,
+                                                            bedMinutes: ctx.profile.bedtimeMinutes,
+                                                            score: score?.total, day: AppClock.now))
                 scheduleSection
                 if !proposals.isEmpty { proposalSection }
                 if let errorText {
@@ -37,6 +41,7 @@ struct TodayView: View {
             .navigationTitle("오늘의 추천")
             .task(id: calendar.revision) { reload() }
             .onChange(of: store.lastLoadedAt) { _, _ in reload() }
+            .onChange(of: NotionStore.shared.lastSync) { _, _ in reload() }
             .onChange(of: ctx.today.fatigue) { _, _ in reload() }
             .refreshable { reload() }
         }
@@ -46,7 +51,7 @@ struct TodayView: View {
         ctx.rollOverIfNeeded()
         items = calendar.items(on: AppClock.now, fixedKeywords: ctx.profile.fixedKeywords)
         recs = DayPlanner.recommendations(input)
-        markers = DayPlanner.markers(input)
+        markers = DayPlanner.markers(input) + notionMarkers()
         proposals = DayPlanner.proposals(input)
         AgentLog.shared.add(.planToday, path: .rule,
                             action: "추천 \(recs.count)개 · 일정 조정안 \(proposals.count)개 (수면 부족 신호: \(DayPlanner.lowSleepSignal(input) ? "있음" : "없음"))")
@@ -101,6 +106,18 @@ struct TodayView: View {
             }
         } header: {
             Text("오늘의 컨디션")
+        }
+    }
+
+    /// 노션 할 일의 추천 시간 → 타임라인 표시
+    private func notionMarkers() -> [DayMarker] {
+        let curve = EnergyModel.curve(wakeMinutes: wakeMinutesToday, bedMinutes: ctx.profile.bedtimeMinutes,
+                                      score: score?.total, day: AppClock.now)
+        return NotionStore.shared.tasks(on: AppClock.now).compactMap { t in
+            guard !t.done, t.time == nil, let c = t.cls,
+                  let s = NotionParse.suggestedSlot(for: c, items: items, curve: curve,
+                                                    day: AppClock.now, now: AppClock.now) else { return nil }
+            return DayMarker(time: s, label: "📝" + String(t.title.prefix(4)), color: .purple)
         }
     }
 

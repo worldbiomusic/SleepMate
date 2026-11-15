@@ -147,6 +147,26 @@ struct SettingsView: View {
             } label: {
                 Label("테스트 · 더미 데이터 · 셀프 테스트", systemImage: "testtube.2")
             }
+            NavigationLink {
+                NotionSettingsView()
+            } label: {
+                LabeledContent {
+                    Text(NotionStore.shared.isConfigured ? "연결됨" : "연결 안 됨")
+                        .foregroundStyle(NotionStore.shared.isConfigured ? .green : .secondary)
+                } label: {
+                    Label("노션 할 일", systemImage: "checklist")
+                }
+            }
+            NavigationLink {
+                JevSettingsView()
+            } label: {
+                LabeledContent {
+                    Text(JevClient.isConfigured ? "연결됨" : "규칙으로 동작")
+                        .foregroundStyle(JevClient.isConfigured ? .green : .secondary)
+                } label: {
+                    Label("Jev · 빠른 판단 AI", systemImage: "bolt.horizontal.circle")
+                }
+            }
             Button("AI 요약 설정 (Claude)") { showCoach = true }
             Button("단축어 설정 방법") { showGuide = true }
             HStack {

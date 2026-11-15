@@ -72,8 +72,13 @@ final class CoachStore {
     func update(nights: [SleepNight], fromImport: Bool, persist: Bool = true) async {
         guard refreshRules(nights: nights, fromImport: fromImport, persist: persist) else { return }
         guard fromImport else { return }
-        if settings.autoClaude && hasKey {
-            await generateWithClaude(nights: nights)
+        if settings.autoClaude && hasKey, let stats = SleepStats(nights: nights) {
+            // ④ Jev 게이트: 평범한 날이면 Claude를 부르지 않고 기본 분석 유지 (비용 절감)
+            if await JevDecisions.shouldUseLLM(stats) {
+                await generateWithClaude(nights: nights)
+            } else {
+                log.add("Jev: 평범한 밤 → Claude 호출 생략")
+            }
         }
         if settings.autoSpeak {
             speak()
