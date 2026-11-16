@@ -1,15 +1,25 @@
 import SwiftUI
 
 enum AppTab: String {
-    case home, today, winddown, alarm, settings
+    case home, today, winddown, alarm, guide
+}
+
+/// 설정은 탭 대신 홈 오른쪽 위 톱니바퀴에서 연다 (iPhone 탭은 5개까지가 한 번에 보임)
+@MainActor
+@Observable
+final class AppRouter {
+    static let shared = AppRouter()
+    var showSettings = UserDefaults.standard.string(forKey: "demoTab") == "settings"
 }
 
 /// 앱의 최상위 화면: 시나리오별 탭
-///  홈(05 수면 요약·대시보드) · 오늘(01 행동·일정 추천) · 취침 준비(02) · 알람(04) · 설정(Context)
+///  홈(05 수면 요약·대시보드) · 오늘(01 행동·일정 추천) · 취침 준비(02) · 알람(04) · 소개(프로젝트 설명)
+///  설정(Context)은 홈 오른쪽 위 톱니바퀴
 struct ContentView: View {
     @Environment(SleepStore.self) private var store
     @Environment(ContextStore.self) private var ctx
     @Environment(CalendarService.self) private var calendar
+    @State private var router = AppRouter.shared
     @State private var tab: AppTab = {
         if let t = UserDefaults.standard.string(forKey: "demoTab"), let v = AppTab(rawValue: t) { return v }
         return .home
@@ -29,14 +39,16 @@ struct ContentView: View {
             AlarmView()
                 .tabItem { Label("알람", systemImage: "alarm.fill") }
                 .tag(AppTab.alarm)
-            SettingsView()
-                .tabItem { Label("설정", systemImage: "slider.horizontal.3") }
-                .tag(AppTab.settings)
+            GuideView()
+                .tabItem { Label("소개", systemImage: "book.pages.fill") }
+                .tag(AppTab.guide)
         }
+        .sheet(isPresented: $router.showSettings) { SettingsView() }
         .safeAreaInset(edge: .top, spacing: 0) { TestModeBanner() }
         .environment(\.locale, Locale(identifier: "ko_KR"))   // 차트 축(시각·요일)을 한국어로
         .task {
             SelfTestCLI.runIfRequested()
+            GuideRenderer.runIfRequested()
             await LiveAPITests.runIfRequested()
             // CI: -testSleep short -testToday morningFocus -testTomorrow early -testClock evening
             let d = UserDefaults.standard

@@ -146,6 +146,13 @@ jobs:
           shoot 9-tab-winddown  -demoData YES -demoTab winddown
           shoot 10-tab-alarm    -demoData YES -demoTab alarm
           shoot 11-tab-settings -demoData YES -demoTab settings
+          shoot 13-tab-guide -demoData YES -demoTab guide
+          # 소개 화면 전체를 긴 이미지 한 장으로
+          shoot 13a-guide-render -renderGuide YES -demoData YES -demoTab guide
+          sleep 3
+          grep "\[Guide\]" logs/13a-guide-render.err || true
+          DATA=$(xcrun simctl get_app_container "$UDID" "$BID" data)
+          cp "$DATA/Documents/guide-full.png" shots/13b-guide-full.png || echo "guide-full.png 없음"
           shoot 12-report       -demoData YES -demoScreen report
 
           xcrun simctl ui "$UDID" appearance dark

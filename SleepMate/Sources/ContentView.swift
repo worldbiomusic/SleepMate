@@ -86,6 +86,14 @@ struct HomeView: View {
             .navigationTitle("SleepMate")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        AppRouter.shared.showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("설정")
+                }
+                ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
                         LogView()
                     } label: {

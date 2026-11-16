@@ -18,6 +18,8 @@ targets:
     platform: iOS
     sources:
       - path: SleepMate/Sources
+      - path: SleepMate/GuideImages
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jeonghanlee.sleepmate
