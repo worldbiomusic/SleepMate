@@ -10,8 +10,18 @@ struct GuideView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                GuideContent(zoom: $zoom)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    GuideContent(zoom: $zoom)
+                }
+                .task {
+                    // CI 스크린샷: -guideSection N 이면 N번째 구역으로 스크롤
+                    let n = UserDefaults.standard.integer(forKey: "guideSection")
+                    if n > 0 {
+                        try? await Task.sleep(for: .milliseconds(600))
+                        proxy.scrollTo(n, anchor: .top)
+                    }
+                }
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("소개")
@@ -26,40 +36,19 @@ struct GuideContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
-            GuideHero()
-            ProblemSection()
-            ScenarioSection(zoom: $zoom)
-            ArchitectureSection()
-            DecisionFlowSection()
-            HybridAISection()
-            DayRhythmSection()
-            PrivacySection()
-            PipelineSection()
-            GuideFooter()
+            GuideHero().id(0)
+            ProblemSection().id(1)
+            ScenarioSection(zoom: $zoom).id(2)
+            ArchitectureSection().id(3)
+            DecisionFlowSection().id(4)
+            HybridAISection().id(5)
+            DayRhythmSection().id(6)
+            PrivacySection().id(7)
+            PipelineSection().id(8)
+            GuideFooter().id(9)
         }
         .padding(.horizontal)
         .padding(.bottom, 32)
-    }
-}
-
-/// CI: 소개 화면 전체를 긴 이미지 한 장으로 저장 (-renderGuide YES → Documents/guide-full.png)
-@MainActor
-enum GuideRenderer {
-    static func runIfRequested() {
-        guard UserDefaults.standard.bool(forKey: "renderGuide") else { return }
-        let view = GuideContent(zoom: .constant(nil))
-            .frame(width: 390)
-            .background(Color(.systemGroupedBackground))
-            .environment(\.locale, Locale(identifier: "ko_KR"))
-        let r = ImageRenderer(content: view)
-        r.scale = 2
-        guard let img = r.uiImage, let data = img.pngData(),
-              let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            FileHandle.standardError.write(Data("[Guide] render failed\n".utf8))
-            return
-        }
-        try? data.write(to: dir.appendingPathComponent("guide-full.png"))
-        FileHandle.standardError.write(Data("[Guide] saved \(Int(img.size.width))x\(Int(img.size.height))\n".utf8))
     }
 }
 
