@@ -494,7 +494,9 @@ private struct HybridAISection: View {
             Card {
                 Text("응답 시간 (밀리초, 로그 눈금)").font(.caption.bold()).foregroundStyle(.secondary)
                 Chart(tiers) { t in
-                    BarMark(x: .value("응답 시간", t.ms), y: .value("단계", t.id))
+                    // 로그 눈금은 0에서 시작할 수 없으므로 0.5ms부터 그린다
+                    BarMark(xStart: .value("시작", 0.5), xEnd: .value("응답 시간", max(t.ms, 2)),
+                            y: .value("단계", t.id))
                         .foregroundStyle(t.color.gradient)
                         .annotation(position: .trailing) {
                             Text(t.ms < 10 ? "즉시" : t.ms < 1000 ? "\(Int(t.ms))ms" : String(format: "%.1f초", t.ms / 1000))
