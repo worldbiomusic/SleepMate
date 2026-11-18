@@ -1,0 +1,266 @@
+[SelfTest] PASS [가져오기 (단축어 텍스트)] ISO 형식 한 줄
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 단계 Core → 코어
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 길이 35분
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 소스 이름
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘깊은 수면’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘REM 수면’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘코어’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘깨어 있음’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘침대에 있음’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘Asleep’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘In Bed’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘Deep’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘Awake’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘REM’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘HKCategoryValueSleepAnalysisAsleepCore’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘HKCategoryValueSleepAnalysisAsleepREM’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘HKCategoryValueSleepAnalysisAwake’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘HKCategoryValueSleepAnalysisInBed’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘수면’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 값 ‘3’
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 알 수 없는 값은 nil
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 한국어 날짜(오전)
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 한국어 날짜(오후)
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 한국어 날짜(년월일)
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 좁은 공백 포함 날짜
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 소수점 초 ISO
+[SelfTest] PASS [가져오기 (단축어 텍스트)] CRLF·빈 줄 처리, 정상 2줄
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 잘못된 줄·끝<시작 건너뜀
+[SelfTest] PASS [가져오기 (단축어 텍스트)] 소스 생략 시 ‘단축어’
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 겹치는 구간 병합 (3시간)
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 워치 기록만 사용 (7시간)
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 단계 데이터 있음
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 아이폰 ‘단계 미상’ 제외
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 자정 넘는 밤 = 1개
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 기상일 = 오늘
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 낮잠은 같은 날로 묶이되
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 기상 시각은 밤잠 기준 07:00
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 밤잠 8시간
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 낮잠 40분 따로
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 겹친 단계 미상은 남는 부분만 (4시간)
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 총 수면 8시간
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 18시 이후 수면 → 다음 날
+[SelfTest] PASS [밤 묶기 · 중복 · 낮잠] 기록 없음 → 0일
+[SelfTest] PASS [통계 · 수면 점수] 충분한 밤 점수 ≥ 80
+[SelfTest] PASS [통계 · 수면 점수] 7일 기록 7밤
+[SelfTest] PASS [통계 · 수면 점수] 부족한 밤 점수 < 70
+[SelfTest] PASS [통계 · 수면 점수] 부족한 밤 라벨
+[SelfTest] PASS [통계 · 수면 점수] 부족한 밤 < 평균
+[SelfTest] PASS [통계 · 수면 점수] 불규칙 취침 편차 ≥ 60분
+[SelfTest] PASS [통계 · 수면 점수] 불규칙 → 규칙성 점수 낮음
+[SelfTest] PASS [통계 · 수면 점수] 규칙적 → 규칙성 점수 높음
+[SelfTest] PASS [통계 · 수면 점수] 자정 앞뒤 취침 편차 < 30분
+[SelfTest] PASS [통계 · 수면 점수] 오래된 기록 → 5일 전
+[SelfTest] PASS [통계 · 수면 점수] 단계 없음 표시
+[SelfTest] PASS [통계 · 수면 점수] 단계 없음 → 단계 점수 중간값 9
+[SelfTest] PASS [통계 · 수면 점수] 자주 깬 밤 깸 ≥ 60분
+[SelfTest] PASS [통계 · 수면 점수] 중복 기록이어도 8시간 이하
+[SelfTest] PASS [통계 · 수면 점수] 기록 없음 → 통계 없음
+[SelfTest] PASS [통계 · 수면 점수] 점수 0~100 범위
+[SelfTest] PASS [05 기본 요약] 부족 → 카페인 추천
+[SelfTest] PASS [05 기본 요약] 부족 → 일찍 자기 추천
+[SelfTest] PASS [05 기본 요약] 추천 2~4개
+[SelfTest] PASS [05 기본 요약] 음성 원고에 추천 포함
+[SelfTest] PASS [05 기본 요약] 충분 → 리듬 유지
+[SelfTest] PASS [05 기본 요약] 오래된 기록 안내 (요약)
+[SelfTest] PASS [05 기본 요약] 오래된 기록 안내 (음성)
+[SelfTest] PASS [05 기본 요약] 자주 깸 → 깬 시간 언급
+[SelfTest] PASS [05 기본 요약] 자주 깸 → 화면 멀리하기
+[SelfTest] PASS [05 기본 요약] 불규칙 → 일정한 취침 추천
+[SelfTest] PASS [05 기본 요약] 단계 없음 → 단계 문장 생략
+[SelfTest] PASS [05 Claude 연동 (오프라인 검사)] 앞뒤 글·코드블록이 있어도 해석
+[SelfTest] PASS [05 Claude 연동 (오프라인 검사)] 빈 추천 제거
+[SelfTest] PASS [05 Claude 연동 (오프라인 검사)] 출처 = Claude
+[SelfTest] PASS [05 Claude 연동 (오프라인 검사)] JSON 없으면 오류
+[SelfTest] PASS [05 Claude 연동 (오프라인 검사)] 필드 누락이면 오류
+[SelfTest] PASS [05 Claude 연동 (오프라인 검사)] 수치 포함 (사람이 읽는 시간 문자열)
+[SelfTest] PASS [05 Claude 연동 (오프라인 검사)] 원시 구간·기기 이름 미포함
+[SelfTest] PASS [05 Claude 연동 (오프라인 검사)] 전송 JSON 형식 유효
+[SelfTest] PASS [01 행동·일정 추천] 기록 없음 → 판단 보류 1개
+[SelfTest] PASS [01 행동·일정 추천] 수면 부족 신호
+[SelfTest] PASS [01 행동·일정 추천] 충분 + 피로 2 → 신호 없음
+[SelfTest] PASS [01 행동·일정 추천] 충분해도 피로 4 → 신호
+[SelfTest] PASS [01 행동·일정 추천] 카페인 추천
+[SelfTest] PASS [01 행동·일정 추천] 첫 일정 전 산책 시각
+[SelfTest] PASS [01 행동·일정 추천] 부족 → 30분 일찍 취침
+[SelfTest] PASS [01 행동·일정 추천] 오래된 기록 안내 먼저
+[SelfTest] PASS [01 행동·일정 추천] 자주 건너뛴 추천은 맨 뒤
+[SelfTest] PASS [01 행동·일정 추천] 오전 집중 작업 이동 제안
+[SelfTest] PASS [01 행동·일정 추천] 오후(13시 이후)로 이동
+[SelfTest] PASS [01 행동·일정 추천] 고정 일정(수업·회의)은 옮기지 않음
+[SelfTest] PASS [01 행동·일정 추천] 옮긴 시간이 다른 일정과 안 겹침
+[SelfTest] PASS [01 행동·일정 추천] 길이 유지
+[SelfTest] PASS [01 행동·일정 추천] 충분 + 피로 2 → 조정안 없음
+[SelfTest] PASS [01 행동·일정 추천] 이미 지난 일정은 옮기지 않음
+[SelfTest] PASS [01 행동·일정 추천] 연속 일정 뒤 휴식 추가 제안
+[SelfTest] PASS [01 행동·일정 추천] 휴식이 다른 일정과 안 겹침
+[SelfTest] PASS [01 행동·일정 추천] 연속 일정 7시간
+[SelfTest] PASS [01 행동·일정 추천] 빈 시간 찾기 (점심 뒤 13:00)
+[SelfTest] PASS [01 행동·일정 추천] GUARD: 고정 일정 변경 차단
+[SelfTest] PASS [01 행동·일정 추천] GUARD: 승인 없는 변경 차단
+[SelfTest] PASS [01 행동·일정 추천] 타임라인 취침 표시 = 30분 일찍
+[SelfTest] PASS [04 기상 알람] 9시 수업 → 07:30 기상
+[SelfTest] PASS [04 기상 알람] 취침 목표 23:45
+[SelfTest] PASS [04 기상 알람] 7시 일정 → 최소 기상 06:00
+[SelfTest] PASS [04 기상 알람] 최소 기상으로 조정 표시
+[SelfTest] PASS [04 기상 알람] 가장 이른 일정 기준
+[SelfTest] PASS [04 기상 알람] 일정 없음 → 평소 07:00
+[SelfTest] PASS [04 기상 알람] 오후 3시 일정 → 늦잠 제한 08:00
+[SelfTest] PASS [04 기상 알람] 5분 단위 내림 (9:07 → 07:35)
+[SelfTest] PASS [04 기상 알람] 종일 일정은 무시
+[SelfTest] PASS [04 기상 알람] GUARD: 알람은 항상 허용
+[SelfTest] PASS [02 취침 준비] 단계 시각 22:00 · 22:30 · 23:00
+[SelfTest] PASS [02 취침 준비] 목표 확인 알림에 +5/+10 버튼
+[SelfTest] PASS [02 취침 준비] GUARD: 알림 최대 개수 초과 차단
+[SelfTest] PASS [02 취침 준비] GUARD: 알림 끔이면 차단
+[SelfTest] PASS [02 취침 준비] 메시지: 기록 없음
+[SelfTest] PASS [02 취침 준비] 메시지: 5개 남음
+[SelfTest] PASS [02 취침 준비] 메시지: 목표 도달
+[SelfTest] PASS [02 취침 준비] 메시지: 초과
+[SelfTest] PASS [02 취침 준비] 메시지: 멈춤
+[SelfTest] PASS [02 취침 준비] 21:00 → 취침까지 150분
+[SelfTest] PASS [02 취침 준비] 23:00 → 30분
+[SelfTest] PASS [02 취침 준비] 02:00 → 지남(음수)
+[SelfTest] PASS [02 취침 준비] 12:00 → 690분
+[SelfTest] PASS [02 취침 준비] 자정 넘는 취침 목표: 23:00 → 90분
+[SelfTest] PASS [02 취침 준비] 자정 넘는 취침 단계 첫 알림 23:00
+[SelfTest] PASS [02 취침 준비] 음악 3곡
+[SelfTest] PASS [02 취침 준비] 스트레스 → 빗소리
+[SelfTest] PASS [02 취침 준비] 다음 일정 = 지금 이후 첫 일정
+[SelfTest] PASS [시각 · 컨디션 곡선] 음수 분 → 23:45
+[SelfTest] PASS [시각 · 컨디션 곡선] 오후 11:30
+[SelfTest] PASS [시각 · 컨디션 곡선] 자정 = 오전 12:00
+[SelfTest] PASS [시각 · 컨디션 곡선] 정오 = 오후 12:00
+[SelfTest] PASS [시각 · 컨디션 곡선] 분 → 날짜 → 분
+[SelfTest] PASS [시각 · 컨디션 곡선] 기간 표시
+[SelfTest] PASS [시각 · 컨디션 곡선] 곡선 시작 = 기상
+[SelfTest] PASS [시각 · 컨디션 곡선] 곡선 끝 = 취침
+[SelfTest] PASS [시각 · 컨디션 곡선] 시간 순서
+[SelfTest] PASS [시각 · 컨디션 곡선] 자정 넘는 취침도 끝이 다음 날
+[SelfTest] PASS [시각 · 컨디션 곡선] 점수 낮으면 컨디션 최고점도 낮음
+[SelfTest] PASS [시각 · 컨디션 곡선] 일찍 일어나도 곡선 생성
+[SelfTest] PASS [05 수면 코치] 두 프리셋의 통계가 다름
+[SelfTest] PASS [05 수면 코치] 같은 날이라도 수치가 바뀌면 요약 갱신
+[SelfTest] PASS [05 수면 코치] 수치가 같으면 요약 유지
+[SelfTest] PASS [05 수면 코치] 기록 없으면 요약 없음
+[SelfTest] PASS [테스트 데이터 프리셋] ‘충분히 잔 일주일’ 밤 생성
+[SelfTest] PASS [테스트 데이터 프리셋] ‘지난밤 수면 부족 (5시간)’ 밤 생성
+[SelfTest] PASS [테스트 데이터 프리셋] ‘자주 깬 밤’ 밤 생성
+[SelfTest] PASS [테스트 데이터 프리셋] ‘들쭉날쭉한 취침’ 밤 생성
+[SelfTest] PASS [테스트 데이터 프리셋] ‘밤잠 + 낮잠’ 밤 생성
+[SelfTest] PASS [테스트 데이터 프리셋] ‘단계 없음 (아이폰만 기록)’ 밤 생성
+[SelfTest] PASS [테스트 데이터 프리셋] ‘워치·아이폰 중복 기록’ 밤 생성
+[SelfTest] PASS [테스트 데이터 프리셋] ‘오래된 기록 (5일 전)’ 밤 생성
+[SelfTest] PASS [테스트 데이터 프리셋] 낮잠 프리셋: 낮잠 분리됨
+[SelfTest] PASS [테스트 데이터 프리셋] ‘평범한 하루’ 일정 시간 순·겹침 없음
+[SelfTest] PASS [테스트 데이터 프리셋] ‘오전 집중 작업 + 수업’ 일정 시간 순·겹침 없음
+[SelfTest] PASS [테스트 데이터 프리셋] ‘연속 일정이 많은 날’ 일정 시간 순·겹침 없음
+[SelfTest] PASS [테스트 데이터 프리셋] ‘아침 7시 일정’ 일정 시간 순·겹침 없음
+[SelfTest] PASS [테스트 데이터 프리셋] ‘오후 3시 첫 일정’ 일정 시간 순·겹침 없음
+[SelfTest] PASS [테스트 데이터 프리셋] ‘일정 없음’ 일정 시간 순·겹침 없음
+[SelfTest] PASS [Jev 빠른 판단] 모델 이름
+[SelfTest] PASS [Jev 빠른 판단] 질문 3개 인코딩
+[SelfTest] PASS [Jev 빠른 판단] noul 타입
+[SelfTest] PASS [Jev 빠른 판단] score 단계 수
+[SelfTest] PASS [Jev 빠른 판단] JSON 직렬화 가능
+[SelfTest] PASS [Jev 빠른 판단] noul 확률
+[SelfTest] PASS [Jev 빠른 판단] choice 값
+[SelfTest] PASS [Jev 빠른 판단] choice 확률표
+[SelfTest] PASS [Jev 빠른 판단] score 값
+[SelfTest] PASS [Jev 빠른 판단] 잘못된 응답 → 오류
+[SelfTest] PASS [Jev 빠른 판단] 여유 있을 때 말 안 걸기
+[SelfTest] PASS [Jev 빠른 판단] 목표 초과 → 개입
+[SelfTest] PASS [Jev 빠른 판단] 목표 초과 → 단호한 톤
+[SelfTest] PASS [Jev 빠른 판단] 목표 초과 → 취침 모드 제안
+[SelfTest] PASS [Jev 빠른 판단] 취침 직전 → 호흡
+[SelfTest] PASS [Jev 빠른 판단] 이미 멈췄으면 개입 안 함
+[SelfTest] PASS [Jev 빠른 판단] 불안 → 수면 사운드
+[SelfTest] PASS [Jev 빠른 판단] 발표 준비 → 집중
+[SelfTest] PASS [Jev 빠른 판단] 시험 복습 → 집중
+[SelfTest] PASS [Jev 빠른 판단] 종합시험 → 약속
+[SelfTest] PASS [Jev 빠른 판단] 마트 → 볼일
+[SelfTest] PASS [Jev 빠른 판단] 저녁 운동 → 자기 관리
+[SelfTest] PASS [Jev 빠른 판단] 특강 → 약속
+[SelfTest] PASS [Jev 빠른 판단] 모르는 일 → 가벼운 일
+[SelfTest] PASS [Jev 빠른 판단] 스트레스 → 빗소리
+[SelfTest] PASS [Jev 빠른 판단] 피곤 → 백색소음
+[SelfTest] PASS [Jev 빠른 판단] 선호 로파이
+[SelfTest] PASS [Jev 빠른 판단] 유튜브 링크 2개(앱·웹)
+[SelfTest] PASS [Jev 빠른 판단] 웹 링크는 https
+[SelfTest] PASS [Jev 빠른 판단] 평범한 밤 → Claude 생략
+[SelfTest] PASS [Jev 빠른 판단] 부족한 밤 → Claude 사용
+[SelfTest] PASS [Claude 응답 형식] 도구 응답 → 요약
+[SelfTest] PASS [Claude 응답 형식] 도구 응답 → 빈 추천 제거
+[SelfTest] PASS [Claude 응답 형식] 글 응답도 해석
+[SelfTest] PASS [Claude 응답 형식] 잘린 응답 → 오류
+[SelfTest] PASS [Claude 응답 형식] 전날 낮잠 40분 → 요약 입력에 포함
+[SelfTest] PASS [Claude 응답 형식] Claude 입력에 낮잠
+[SelfTest] PASS [Claude 응답 형식] 낮잠 없으면 입력에 없음
+[SelfTest] PASS [Claude 응답 형식] 시간 문자열 7:15
+[SelfTest] PASS [Claude 응답 형식] 시간 문자열 7:00
+[SelfTest] PASS [Claude 응답 형식] 시간 문자열 45분
+[SelfTest] PASS [Claude 응답 형식] 긴 음성 원고 → 220자 이내로 자름
+[SelfTest] PASS [Claude 응답 형식] 짧은 음성 원고는 그대로
+[SelfTest] PASS [노션 할 일] 제목 날짜 ‘11/18 월’
+[SelfTest] PASS [노션 할 일] 요일 앞 ‘금11/18’
+[SelfTest] PASS [노션 할 일] 날짜 없는 제목 → nil
+[SelfTest] PASS [노션 할 일] 12월에 본 1/3 → 다음 해
+[SelfTest] PASS [노션 할 일] 오늘·내일 할 일 4개 (취소선 제외)
+[SelfTest] PASS [노션 할 일] 오래된 제목에서 멈춤
+[SelfTest] PASS [노션 할 일] 취소선 항목 제외
+[SelfTest] PASS [노션 할 일] 체크 → 완료
+[SelfTest] PASS [노션 할 일] 날짜 제목 아래 → 그 날짜
+[SelfTest] PASS [노션 할 일] 멘션 시각 13:20
+[SelfTest] PASS [노션 할 일] 멘션 제목 정리
+[SelfTest] PASS [노션 할 일] 페이지 넘김 뒤에도 날짜 유지
+[SelfTest] PASS [노션 할 일] DB: 오늘 항목만
+[SelfTest] PASS [노션 할 일] DB: 상태 ‘완료’ → done
+[SelfTest] PASS [노션 할 일] 링크에서 ID 추출
+[SelfTest] PASS [노션 할 일] 잘못된 링크 → nil
+[SelfTest] PASS [노션 할 일] 집중 추천은 수업과 안 겹침
+[SelfTest] PASS [노션 할 일] 집중 추천은 평균 이상 컨디션
+[SelfTest] PASS [노션 할 일] 약속은 추천 시간 없음
+[SelfTest] PASS [앱 사용시간] 오늘 유튜브 (35 + 25 + 사용 중 10)
+[SelfTest] PASS [앱 사용시간] 한국어 이름도 같은 앱
+[SelfTest] PASS [앱 사용시간] 인스타그램 10분
+[SelfTest] PASS [앱 사용시간] 취침 준비 구간(22:00~) 합계
+[SelfTest] PASS [앱 사용시간] 닫힘을 놓치면 최대 3시간
+[SelfTest] PASS [앱 사용시간] 낮: 하루 한도 알림
+[SelfTest] PASS [앱 사용시간] 낮: 남은 20분 뒤 알림
+[SelfTest] PASS [앱 사용시간] 초과 뒤 반복 알림 3개
+[SelfTest] PASS [앱 사용시간] 반복 간격 10분
+[SelfTest] PASS [앱 사용시간] 밤: 취침 전 한도가 먼저
+[SelfTest] PASS [앱 사용시간] 밤: 5분 뒤 알림
+[SelfTest] PASS [앱 사용시간] 밤: 단호한 말투 문장
+[SelfTest] PASS [앱 사용시간] 이미 초과 → 바로 알림
+[SelfTest] PASS [앱 사용시간] 한도 없는 앱 → 알림 없음
+[SelfTest] PASS [앱 사용시간] 21:50에 열면 22:20에 취침 전 알림
+[SelfTest] PASS [개인 문맥 기억] 28일 에피소드
+[SelfTest] PASS [개인 문맥 기억] 늦은 요일 지연 75분
+[SelfTest] PASS [개인 문맥 기억] 늦은 요일 밤 앱 50분
+[SelfTest] PASS [개인 문맥 기억] 에피소드에 개입 1개
+[SelfTest] PASS [개인 문맥 기억] 자정 넘김 지연 계산
+[SelfTest] PASS [개인 문맥 기억] 요일 늦잠 패턴 발견
+[SelfTest] PASS [개인 문맥 기억] 근거 4번 · 신뢰도 ≥ 0.55 (마지막 근거가 1주 전이라 조금 감쇠)
+[SelfTest] PASS [개인 문맥 기억] 다른 요일은 패턴 없음
+[SelfTest] PASS [개인 문맥 기억] 단호한 말투 수락률 > 부드러운 말투
+[SelfTest] PASS [개인 문맥 기억] 밤 앱 사용 → 늦은 취침 패턴
+[SelfTest] PASS [개인 문맥 기억] 유튜브 하루 평균
+[SelfTest] PASS [개인 문맥 기억] 평균 수면 패턴
+[SelfTest] PASS [개인 문맥 기억] 8주 뒤 신뢰도 1/4로 감쇠
+[SelfTest] PASS [개인 문맥 기억] 스냅샷: 오늘은 늦게 자는 요일
+[SelfTest] PASS [개인 문맥 기억] 스냅샷: 잘 통하는 말투 = 단호
+[SelfTest] PASS [개인 문맥 기억] 스냅샷: LLM용 문장 ≤ 3개
+[SelfTest] PASS [개인 문맥 기억] 기억 없음 → 아직 말 안 걸기
+[SelfTest] PASS [개인 문맥 기억] 기억 있음 → 늦는 요일이라 미리 말 걸기
+[SelfTest] PASS [개인 문맥 기억] 기억 있음 → 단호한 말투
+[SelfTest] PASS [개인 문맥 기억] 판단 이유에 기억 표시
+[SelfTest] PASS [개인 문맥 기억] 한도 전 단호 문장은 '한도 넘음'이라 하지 않음
+[SelfTest] PASS [개인 문맥 기억] 애매한 사실 → 되묻기
+[SelfTest] PASS [개인 문맥 기억] 3일 안에 다시 묻지 않음
+[SelfTest] PASS [개인 문맥 기억] ‘아니에요’ → 다시 쓰지 않음
+[SelfTest] PASS [개인 문맥 기억] ‘맞아요’ → 확인됨 (감쇠 없음)
+[SelfTest] PASS [개인 문맥 기억] 방해율 계산 (0~1)
+[SelfTest] PASS [개인 문맥 기억] 5일치로는 요일 패턴 없음
+[SelfTest] PASS [개인 문맥 기억] Claude 입력에 배운 습관
+[SelfTest] SUMMARY total=265 failed=0
