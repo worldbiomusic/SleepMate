@@ -223,12 +223,12 @@ final class UsageStore {
 
     var openSession: AppSession? { sessions.last { $0.end == nil && !$0.manual } }
 
-    func todayMinutes(_ app: String, now: Date = AppClock.now) -> Int {
-        UsageMath.today(sessions, app: app, now: now)
+    func todayMinutes(_ app: String, now at: Date? = nil) -> Int {
+        UsageMath.today(sessions, app: app, now: at ?? AppClock.now)
     }
 
-    func eveningMinutes(now: Date = AppClock.now, profile: UserProfile) -> Int {
-        UsageMath.evening(sessions, watched: watchedApps, now: now, profile: profile)
+    func eveningMinutes(now at: Date? = nil, profile: UserProfile) -> Int {
+        UsageMath.evening(sessions, watched: watchedApps, now: at ?? AppClock.now, profile: profile)
     }
 
     // MARK: 이벤트 (App Intent · 알림 버튼 · 앱 활성화)

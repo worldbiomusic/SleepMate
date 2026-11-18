@@ -89,7 +89,8 @@ final class MemoryStore {
 
     // MARK: 통합 (아침 동기화 · 앱 열 때)
 
-    func consolidate(nights: [SleepNight], ctx: ContextStore, now: Date = AppClock.now) {
+    func consolidate(nights: [SleepNight], ctx: ContextStore, now at: Date? = nil) {
+        let now = at ?? AppClock.now
         expirePending(now: now)
         let summaries = nights.compactMap { n -> NightSummary? in
             guard let b = n.bedtime, let w = n.wakeTime else { return nil }
