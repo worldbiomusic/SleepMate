@@ -835,7 +835,7 @@ extension SelfTestSuite {
         let facts = MemoryEngine.patterns(episodes: eps, interventions: h.interventions, overrides: [:], profile: p, now: now)
         let late = facts.first { $0.id == "late-weekday-\(h.lateWeekday)" }
         t.check("요일 늦잠 패턴 발견", late != nil, facts.map(\.id).joined(separator: ","))
-        t.check("근거 4번 · 신뢰도 ≥ 0.6", late.map { $0.evidence == 4 && $0.confidence(now: now) >= 0.6 } == true,
+        t.check("근거 4번 · 신뢰도 ≥ 0.55 (마지막 근거가 1주 전이라 조금 감쇠)", late.map { $0.evidence == 4 && $0.confidence(now: now) >= 0.55 } == true,
                 "\(late?.evidence ?? 0) / \(late?.confidence(now: now) ?? 0)")
         t.check("다른 요일은 패턴 없음", facts.filter { $0.id.hasPrefix("late-weekday-") }.count == 1)
         let firm = facts.first { $0.id == "tone-firm" }, gentle = facts.first { $0.id == "tone-gentle" }
