@@ -116,6 +116,16 @@ final class ContextStore {
             .appendingPathComponent("context.json")
     }
 
+    /// 앱 화면 없이(App Intent) 저장된 장기 Context만 읽기
+    nonisolated static func savedProfile() -> UserProfile {
+        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("context.json")
+        struct ProfileOnly: Decodable { var profile: UserProfile }
+        guard let d = try? Data(contentsOf: url), let s = try? JSONDecoder().decode(ProfileOnly.self, from: d)
+        else { return UserProfile() }
+        return s.profile
+    }
+
     /// 테스트 모드 중에는 저장하지 않는다
     private(set) var isTest = false
 

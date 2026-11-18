@@ -20,11 +20,11 @@ enum WindDownPlan {
         return [
             Step(id: "winddown-1", minutes: bed - p.windDownLeadMinutes,
                  title: "취침 준비 \(p.windDownLeadMinutes)분 전이에요",
-                 body: "오늘 화면 목표는 \(p.screenGoal)\(p.screenUnit)예요. 슬슬 마무리할 준비를 해 볼까요?",
+                 body: "지금부터 영상·SNS 앱 사용시간을 재요. 오늘 밤 한도 안에서 슬슬 마무리해 볼까요?",
                  category: NotificationService.windDownCategory),
             Step(id: "winddown-2", minutes: bed - 60,
-                 title: "화면 목표 확인",
-                 body: "지금까지 얼마나 봤는지 버튼으로 기록해 주세요. 목표에 가까우면 여기서 멈춰도 좋아요.",
+                 title: "취침 1시간 전",
+                 body: "자동 기록을 설정하지 않았다면 +5분 버튼으로 기록해 주세요. 한도에 가까우면 여기서 멈춰도 좋아요.",
                  category: NotificationService.screenCheckCategory),
             Step(id: "winddown-3", minutes: bed - 30,
                  title: "취침 준비 시작",
@@ -158,7 +158,7 @@ struct WindDownView: View {
                     Text("지금")
                 }
                 nudgeSection
-                screenSection
+                TonightUsageSection()
                 SoundscapeSection()
                 breathingSection
                 prepareSection
@@ -272,6 +272,7 @@ struct WindDownView: View {
                 c.queryItems = [URLQueryItem(name: "name", value: "SleepMate 취침 모드")]
                 if let u = c.url { openURL(u) }
                 ctx.record(scenario: "02", key: "focus", title: "취침 모드", response: .accepted)
+                MemoryStore.shared.markLatestAccepted(kinds: [.windDown, .appLimit, .bedtimeNotice], now: Date())
             } label: {
                 Label("취침 모드 켜기 (단축어)", systemImage: "moon.circle")
             }
@@ -293,19 +294,30 @@ struct WindDownView: View {
                     Text(n.message).font(.callout).fixedSize(horizontal: false, vertical: true)
                 }
                 DecisionBars(decision: n.view)
+                if let note = n.learnedNote {
+                    Label(note, systemImage: "brain").font(.caption).foregroundStyle(.purple)
+                }
             } else {
                 HStack { ProgressView(); Text("지금 상황을 판단하는 중…").font(.caption) }
             }
         } header: {
             Text("SleepMate의 한마디")
         }
-        .task(id: "\(ctx.today.screenCount)-\(ctx.today.stoppedScreen)-\(ctx.today.mood?.rawValue ?? "")") {
-            let rt = RealtimeContext(now: AppClock.now, profile: ctx.profile, todayItems: [])
-            let input = WindDownInput(minutesToBed: rt.minutesToBedtime, screenCount: ctx.today.screenCount,
-                                      screenGoal: ctx.profile.screenGoal, stopped: ctx.today.stoppedScreen,
-                                      mood: ctx.today.mood, fatigue: ctx.today.fatigue)
+        .task(id: "\(UsageStore.shared.eveningMinutes(now: AppClock.now, profile: ctx.profile))-\(ctx.today.stoppedScreen)-\(ctx.today.mood?.rawValue ?? "")") {
+            let now = AppClock.now
+            let rt = RealtimeContext(now: now, profile: ctx.profile, todayItems: [])
+            let usage = UsageStore.shared
+            let input = WindDownInput(minutesToBed: rt.minutesToBedtime,
+                                      screenCount: usage.eveningMinutes(now: now, profile: ctx.profile),
+                                      screenGoal: usage.settings.eveningLimitMinutes,
+                                      stopped: ctx.today.stoppedScreen,
+                                      mood: ctx.today.mood, fatigue: ctx.today.fatigue,
+                                      snapshot: MemoryStore.shared.snapshot(now: now, profile: ctx.profile))
             let d = await JevDecisions.windDown(input)
             withAnimation(.snappy) { nudge = d }
+            if d.nudge && !TestLab.shared.isOn && !DemoMode.isOn {
+                MemoryStore.shared.recordInAppNudge(tone: d.tone.rawValue, detail: d.action.rawValue, now: Date())
+            }
         }
     }
 
@@ -319,7 +331,7 @@ struct WindDownView: View {
 
     private var limitSection: some View {
         Section {
-            Text("앱 사용 시간을 자동으로 세려면 Apple의 Screen Time 권한(Family Controls)이 필요한데, 이 권한은 유료 개발자 계정과 Apple 승인이 있어야 해요. 지금은 직접 기록하거나 알림의 +5/+10 버튼으로 기록합니다.")
+            Text("iOS의 Screen Time 권한은 유료 개발자 계정이 필요해서, 단축어 자동화(앱 열림·닫힘)로 사용시간을 재요. 측정한 기록은 아이폰 안에만 저장돼요.")
                 .font(.footnote).foregroundStyle(.secondary)
         } header: {
             Text("참고")

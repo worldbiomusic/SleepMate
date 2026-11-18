@@ -16,8 +16,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     /// 앱 시작 시 한 번 호출
     func configure() {
         center.delegate = self
-        let add5 = UNNotificationAction(identifier: Self.actionAdd5, title: "+5 기록", options: [])
-        let add10 = UNNotificationAction(identifier: Self.actionAdd10, title: "+10 기록", options: [])
+        let add5 = UNNotificationAction(identifier: Self.actionAdd5, title: "+5분 기록", options: [])
+        let add10 = UNNotificationAction(identifier: Self.actionAdd10, title: "+10분 기록", options: [])
         let stop = UNNotificationAction(identifier: Self.actionStop, title: "오늘은 여기까지", options: [])
         center.setNotificationCategories([
             UNNotificationCategory(identifier: Self.screenCheckCategory, actions: [add5, add10, stop],
@@ -63,6 +63,18 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         center.add(UNNotificationRequest(identifier: id, content: c, trigger: trigger))
     }
 
+    /// 정확한 시각(초 단위)에 한 번 — 앱 사용 한도 알림용
+    func scheduleIn(id: String, at date: Date, title: String, body: String) {
+        let c = UNMutableNotificationContent()
+        c.title = title
+        c.body = body
+        c.sound = .default
+        c.interruptionLevel = .timeSensitive
+        c.categoryIdentifier = Self.windDownCategory
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, date.timeIntervalSinceNow), repeats: false)
+        center.add(UNNotificationRequest(identifier: id, content: c, trigger: trigger))
+    }
+
     func cancel(prefix: String) async {
         let pending = await center.pendingNotificationRequests()
         let ids = pending.map(\.identifier).filter { $0.hasPrefix(prefix) }
@@ -81,16 +93,20 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         [.banner, .sound, .list]
     }
 
-    /// 알림의 버튼(+5, +10, 오늘은 여기까지) 처리 — 앱이 꺼져 있어도 UserDefaults에 기록
+    /// 알림의 버튼(+5분, +10분, 오늘은 여기까지) 처리 — 앱이 꺼져 있어도 백그라운드로 실행됨
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse) async {
+        let action = response.actionIdentifier
         let key = ContextStore.screenKey(for: Calendar.current.startOfDay(for: Date()))
-        let d = UserDefaults.standard
-        switch response.actionIdentifier {
-        case Self.actionAdd5: d.set(d.integer(forKey: key) + 5, forKey: key)
-        case Self.actionAdd10: d.set(d.integer(forKey: key) + 10, forKey: key)
-        case Self.actionStop: d.set(true, forKey: key + "-stopped")
-        default: break
+        if action == Self.actionStop { UserDefaults.standard.set(true, forKey: key + "-stopped") }
+        await MainActor.run {
+            switch action {
+            case Self.actionAdd5: UsageStore.shared.addManual(minutes: 5)
+            case Self.actionAdd10: UsageStore.shared.addManual(minutes: 10)
+            case Self.actionStop:
+                MemoryStore.shared.markLatestAccepted(kinds: [.windDown, .bedtimeNotice, .appLimit], now: Date())
+            default: break
+            }
         }
     }
 }

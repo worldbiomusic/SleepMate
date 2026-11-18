@@ -148,6 +148,16 @@ struct SettingsView: View {
                 Label("테스트 · 더미 데이터 · 셀프 테스트", systemImage: "testtube.2")
             }
             NavigationLink {
+                MemoryView()
+            } label: {
+                Label("나에 대한 기억", systemImage: "brain.head.profile")
+            }
+            NavigationLink {
+                UsageSetupView()
+            } label: {
+                Label("앱 사용시간 · 한도", systemImage: "hourglass")
+            }
+            NavigationLink {
                 NotionSettingsView()
             } label: {
                 LabeledContent {

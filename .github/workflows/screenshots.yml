@@ -108,6 +108,9 @@ jobs:
           shoot t5-evening       -testSleep good -testClock evening -demoTab winddown
           shoot t6-early-alarm   -testSleep good -testTomorrow early -demoTab alarm
           shoot t7-testlab       -testSleep short -demoScreen testlab
+          shoot t12-memory       -testSleep good -testClock evening -demoScreen memory
+          shoot t13-usage-tonight -testSleep good -testClock evening -demoTab winddown
+          shoot t14-usage-setup  -demoData YES -demoScreen usage
           shoot t8-sound         -testSleep good -testClock evening -demoScreen sound
           shoot t9-jev           -testSleep good -demoScreen jev
           shoot t10-notion       -testSleep good -demoScreen notion

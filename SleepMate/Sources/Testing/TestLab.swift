@@ -74,6 +74,14 @@ final class TestLab {
         added = []
         store.loadTest(segments: TestData.sleep(sleep), label: sleep.rawValue)
         ctx.beginTest(fatigue: fatigue, mood: mood, screenCount: screenCount)
+        // 4주 사용 기록 시뮬레이션 → 기억 통합
+        let now = AppClock.now
+        let h = TestData.memoryHistory(profile: ctx.profile, now: now)
+        let tonight = clock == .evening ? TestData.tonightSessions(now: now) : []
+        UsageStore.shared.beginTest(h.sessions + tonight)
+        MemoryStore.shared.beginTest(interventions: h.interventions)
+        MemoryStore.shared.consolidate(nights: h.nights, contexts: [ctx.today] + ctx.history, profile: ctx.profile,
+                                       sessions: h.sessions + tonight, now: now)
         calendar.revision += 1
         AgentLog.shared.add(event: "테스트 모드", path: .rule,
                             action: "\(sleep.rawValue) · 오늘 \(today.rawValue) · 내일 \(tomorrow.rawValue)",
@@ -86,6 +94,8 @@ final class TestLab {
         added = []
         store.restoreReal()
         ctx.endTest()
+        UsageStore.shared.endTest()
+        MemoryStore.shared.endTest()
         calendar.revision += 1
     }
 

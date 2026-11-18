@@ -117,6 +117,7 @@ enum ClaudeClient {
     규칙:
     - 의료 진단을 하거나 질병을 추정하지 마세요. 원인을 단정하지 말고 "~일 수 있어요"처럼 말하세요.
     - 수치는 주어진 값만 사용하고 지어내지 마세요. 시간은 주어진 문자열("7시간 15분")을 그대로 옮기고, 분으로 바꾸거나 다시 계산하지 마세요. 데이터가 부족하면 그렇다고 말하세요.
+    - learned_patterns_about_user는 지난 기록에서 배운 이 사람의 습관입니다. 관련 있을 때만 추천에 한 번 반영하세요.
     - 낮잠(nap_yesterday_before_last_night, nap_today)이 있으면 밤잠과 따로 짧게 언급하세요. 낮잠 항목이 없으면 낮잠 이야기는 하지 마세요.
     - daysSinceLastNight가 2 이상이면 최근 기록이 오래됐다고 먼저 알려주세요.
     - 추천은 3개, 각 한 문장, 가능하면 구체적인 시각이나 시간(예: "오후 2시 이후", "20분")을 넣으세요.
@@ -139,7 +140,7 @@ enum ClaudeClient {
         ],
     ]
 
-    static func userMessage(_ s: SleepStats, now: Date = Date()) -> String {
+    static func userMessage(_ s: SleepStats, now: Date = Date(), learned: [String] = []) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ko_KR")
         f.dateFormat = "yyyy-MM-dd (E) a h:mm"
@@ -168,6 +169,7 @@ enum ClaudeClient {
             dict["vsAverage"] = diff == 0 ? "평균과 같음" : "평균보다 \(hm(abs(diff))) \(diff > 0 ? "많음" : "적음")"
         }
         if let a = s.avgBedtimeMin { dict["avgBedtimeLast7"] = SleepStats.clock(fromMinutesAfter18: a) }
+        if !learned.isEmpty { dict["learned_patterns_about_user"] = learned }
         if let sp = s.bedtimeSpreadMin {
             dict["bedtimeVariability"] = "표준편차 \(hm(sp))" + (sp >= 60 ? " (불규칙)" : sp <= 20 ? " (규칙적)" : "")
         }
@@ -185,6 +187,8 @@ enum ClaudeClient {
 
     static func report(for s: SleepStats, model: String) async throws -> SleepReport {
         guard let key = KeyStore.load(), !key.isEmpty else { throw ClaudeError.noKey }
+        // 장기 기억에서 배운 습관 (신뢰도 높은 것 최대 3개, 문장만)
+        let learned = await MainActor.run { MemoryStore.shared.snapshot(now: Date(), profile: UserProfile()).lines }
 
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
@@ -198,7 +202,7 @@ enum ClaudeClient {
             "system": systemPrompt,
             "tools": [reportTool],
             "tool_choice": ["type": "tool", "name": "sleep_report"],
-            "messages": [["role": "user", "content": userMessage(s)]],
+            "messages": [["role": "user", "content": userMessage(s, learned: learned)]],
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 

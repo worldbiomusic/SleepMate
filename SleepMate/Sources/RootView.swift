@@ -20,6 +20,7 @@ struct ContentView: View {
     @Environment(ContextStore.self) private var ctx
     @Environment(CalendarService.self) private var calendar
     @State private var router = AppRouter.shared
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab: AppTab = {
         if let t = UserDefaults.standard.string(forKey: "demoTab"), let v = AppTab(rawValue: t) { return v }
         return .home
@@ -46,6 +47,18 @@ struct ContentView: View {
         .sheet(isPresented: $router.showSettings) { SettingsView() }
         .safeAreaInset(edge: .top, spacing: 0) { TestModeBanner() }
         .environment(\.locale, Locale(identifier: "ko_KR"))   // 차트 축(시각·요일)을 한국어로
+        // SleepMate가 앞으로 나오면: 다른 앱 사용은 끝난 것 + 기억 통합(하루 첫 실행 · 새 수면 기록)
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, !TestLab.shared.isOn, !DemoMode.isOn else { return }
+            Task {
+                await UsageStore.shared.closeAll()
+                MemoryStore.shared.consolidate(nights: store.nights, ctx: ctx)
+            }
+        }
+        .onChange(of: store.lastLoadedAt) { _, _ in
+            guard !TestLab.shared.isOn, !DemoMode.isOn else { return }
+            MemoryStore.shared.consolidate(nights: store.nights, ctx: ctx)
+        }
         .task {
             SelfTestCLI.runIfRequested()
             await LiveAPITests.runIfRequested()

@@ -44,6 +44,8 @@ enum SelfTestSuite {
         presetTests(t)
         jevTests(t)
         notionTests(t)
+        usageTests(t)
+        memoryTests(t)
         return t.results
     }
 
@@ -766,5 +768,131 @@ extension SelfTestSuite {
         t.check("약속은 추천 시간 없음",
                 NotionParse.suggestedSlot(for: TaskClass(kind: .appointment, focus: 1, path: .rule),
                                           items: items, curve: curve, day: today, now: now) == nil)
+    }
+
+    // MARK: 앱 사용시간
+
+    static func usageTests(_ t: TestRecorder) {
+        t.group = "앱 사용시간"
+        var p = UserProfile()
+        p.bedtimeMinutes = 23 * 60 + 30
+        p.windDownLeadMinutes = 90
+        let now = at(0, 22, 40)
+        let s = TestData.tonightSessions(now: now)
+        t.equal("오늘 유튜브 (35 + 25 + 사용 중 10)", UsageMath.today(s, app: "YouTube", now: now), 70)
+        t.equal("한국어 이름도 같은 앱", UsageMath.today(s, app: "유튜브", now: now), 70)
+        t.equal("인스타그램 10분", UsageMath.today(s, app: "instagram", now: now), 10)
+        t.equal("취침 준비 구간(22:00~) 합계", UsageMath.evening(s, watched: ["YouTube", "Instagram"], now: now, profile: p), 25)
+        let lost = [AppSession(app: "YouTube", start: at(0, 8, 0), end: nil)]
+        t.equal("닫힘을 놓치면 최대 3시간", UsageMath.today(lost, app: "YouTube", now: at(0, 20, 0)), 180)
+
+        var settings = UsageSettings()
+        settings.eveningLimitMinutes = 20
+        // 낮: 하루 한도 60분 중 40분 사용 → 20분 뒤 알림
+        let noon = at(0, 14, 0)
+        let used40 = [AppSession(app: "YouTube", start: at(0, 9, 0), end: at(0, 9, 40))]
+        let a1 = UsageMath.alerts(app: "YouTube", now: noon, sessions: used40, settings: settings, profile: p, preferFirm: false)
+        t.equal("낮: 하루 한도 알림", a1.first?.kind, .daily)
+        t.equal("낮: 남은 20분 뒤 알림", a1.first.map { Int($0.at.timeIntervalSince(noon) / 60) }, 20)
+        t.equal("초과 뒤 반복 알림 3개", a1.count, 3)
+        t.equal("반복 간격 10분", a1.count == 3 ? Int(a1[1].at.timeIntervalSince(a1[0].at) / 60) : 0, 10)
+        // 밤: 취침 전 한도 20분 중 15분 사용 → 5분 뒤 '취침 전' 알림
+        let night = at(0, 22, 30)
+        let ev = [AppSession(app: "Instagram", start: at(0, 22, 5), end: at(0, 22, 20))]
+        let a2 = UsageMath.alerts(app: "YouTube", now: night, sessions: ev, settings: settings, profile: p, preferFirm: true)
+        t.equal("밤: 취침 전 한도가 먼저", a2.first?.kind, .evening)
+        t.equal("밤: 5분 뒤 알림", a2.first.map { Int($0.at.timeIntervalSince(night) / 60) }, 5)
+        t.check("밤: 단호한 말투 문장", a2.first?.body.contains("내려놓아요") == true)
+        // 이미 초과 → 바로(5초 뒤)
+        let over = [AppSession(app: "YouTube", start: at(0, 22, 0), end: at(0, 22, 25))]
+        let a3 = UsageMath.alerts(app: "YouTube", now: night, sessions: over, settings: settings, profile: p, preferFirm: false)
+        t.check("이미 초과 → 바로 알림", a3.first.map { $0.at.timeIntervalSince(night) <= 10 } == true)
+        // 한도 목록에 없는 앱 → 알림 없음
+        t.check("한도 없는 앱 → 알림 없음",
+                UsageMath.alerts(app: "Safari", now: noon, sessions: [], settings: settings, profile: p, preferFirm: false).isEmpty)
+        // 낮에 열었는데 사용이 취침 준비 시간까지 이어지는 경우: 22:00 + 20분
+        let evening7 = at(0, 21, 50)
+        let a4 = UsageMath.alerts(app: "YouTube", now: evening7, sessions: [], settings: settings, profile: p, preferFirm: false)
+        t.equal("21:50에 열면 22:20에 취침 전 알림", a4.first.map { Clock.minutes(of: $0.at) }, 22 * 60 + 20)
+    }
+
+    // MARK: 개인 문맥 기억 (4주 시뮬레이션)
+
+    static func memoryTests(_ t: TestRecorder) {
+        t.group = "개인 문맥 기억"
+        let p = UserProfile()
+        let now = at(0, 22, 40)
+        let h = TestData.memoryHistory(profile: p, now: now)
+        let eps = MemoryEngine.episodes(nights: h.nights, contexts: [], sessions: h.sessions,
+                                        interventions: h.interventions, profile: p, now: now)
+        t.equal("28일 에피소드", eps.filter { $0.bedDelayMin != nil }.count, 28)
+        let lateEp = eps.first { $0.weekday == h.lateWeekday && $0.bedDelayMin != nil }
+        t.equal("늦은 요일 지연 75분", lateEp?.bedDelayMin, 75)
+        t.check("늦은 요일 밤 앱 50분", (lateEp?.eveningAppMin ?? 0) >= 45, "\(lateEp?.eveningAppMin ?? -1)")
+        t.equal("에피소드에 개입 1개", lateEp?.interventions.count, 1)
+        t.equal("자정 넘김 지연 계산", MemoryEngine.delay(bedtime: at(1, 0, 45), target: 23 * 60 + 30), 75)
+
+        let facts = MemoryEngine.patterns(episodes: eps, interventions: h.interventions, overrides: [:], profile: p, now: now)
+        let late = facts.first { $0.id == "late-weekday-\(h.lateWeekday)" }
+        t.check("요일 늦잠 패턴 발견", late != nil, facts.map(\.id).joined(separator: ","))
+        t.check("근거 4번 · 신뢰도 ≥ 0.6", late.map { $0.evidence == 4 && $0.confidence(now: now) >= 0.6 } == true,
+                "\(late?.evidence ?? 0) / \(late?.confidence(now: now) ?? 0)")
+        t.check("다른 요일은 패턴 없음", facts.filter { $0.id.hasPrefix("late-weekday-") }.count == 1)
+        let firm = facts.first { $0.id == "tone-firm" }, gentle = facts.first { $0.id == "tone-gentle" }
+        t.check("단호한 말투 수락률 > 부드러운 말투", (firm?.value ?? 0) > (gentle?.value ?? 1),
+                "\(firm?.value ?? -1) vs \(gentle?.value ?? -1)")
+        t.check("밤 앱 사용 → 늦은 취침 패턴", facts.contains { $0.id == "evening-app-late" })
+        t.check("유튜브 하루 평균", facts.contains { $0.id == "app-avg-유튜브" })
+        t.check("평균 수면 패턴", facts.contains { $0.id == "sleep-avg" })
+
+        // 감쇠: 같은 사실도 8주 뒤엔 신뢰도가 1/4
+        if let l = late {
+            let later = now.addingTimeInterval(56 * 86400)
+            t.check("8주 뒤 신뢰도 1/4로 감쇠", abs(l.confidence(now: later) - l.confidence(now: now) / 4) < 0.01)
+        }
+
+        // 스냅샷 → 판단 변화
+        let snap = MemoryEngine.snapshot(facts: facts, now: now)
+        t.check("스냅샷: 오늘은 늦게 자는 요일", snap.lateTonight != nil)
+        t.equal("스냅샷: 잘 통하는 말투 = 단호", snap.preferredTone, .firm)
+        t.check("스냅샷: LLM용 문장 ≤ 3개", snap.lines.count <= 3 && !snap.lines.isEmpty)
+        // 취침 50분 전, 앱 사용 0분: 기억이 없으면 조용히, 있으면 미리 말 걸기
+        let base = WindDownInput(minutesToBed: 50, screenCount: 0, screenGoal: 20, stopped: false)
+        var withMem = base
+        withMem.snapshot = snap
+        t.check("기억 없음 → 아직 말 안 걸기", !JevDecisions.windDownRule(base).nudge)
+        let d = JevDecisions.windDownRule(withMem)
+        t.check("기억 있음 → 늦는 요일이라 미리 말 걸기", d.nudge)
+        t.equal("기억 있음 → 단호한 말투", d.tone, .firm)
+        t.check("판단 이유에 기억 표시", d.learnedNote?.contains("늦게") == true, d.learnedNote ?? "nil")
+        t.check("한도 전 단호 문장은 '한도 넘음'이라 하지 않음", !d.message.contains("한도를 넘었어요"))
+
+        // 되묻기와 확인/거절
+        var weak = facts
+        if let i = weak.firstIndex(where: { $0.id == "late-weekday-\(h.lateWeekday)" }) { weak[i].baseConfidence = 0.5 }
+        let q = MemoryEngine.question(facts: weak, askedAt: [:], now: now)
+        t.check("애매한 사실 → 되묻기", q?.question != nil, q?.id ?? "nil")
+        if let q {
+            t.check("3일 안에 다시 묻지 않음", MemoryEngine.question(facts: weak, askedAt: [q.id: now], now: now)?.id != q.id)
+        }
+        let rejected = MemoryEngine.patterns(episodes: eps, interventions: h.interventions,
+                                             overrides: ["late-weekday-\(h.lateWeekday)": .rejected], profile: p, now: now)
+        t.check("‘아니에요’ → 다시 쓰지 않음", !rejected.contains { $0.id == "late-weekday-\(h.lateWeekday)" })
+        let confirmed = MemoryEngine.patterns(episodes: eps, interventions: h.interventions,
+                                              overrides: ["late-weekday-\(h.lateWeekday)": .confirmed], profile: p, now: now)
+        t.check("‘맞아요’ → 확인됨 (감쇠 없음)",
+                confirmed.first { $0.id == "late-weekday-\(h.lateWeekday)" }.map { $0.source == .confirmed && $0.confidence(now: now.addingTimeInterval(200 * 86400)) > 0.9 } == true)
+
+        // 방해율
+        let rate = MemoryEngine.interruptionRate(h.interventions) ?? -1
+        t.check("방해율 계산 (0~1)", rate > 0 && rate < 1, "\(rate)")
+        // 데이터가 적으면 섣불리 패턴을 만들지 않음
+        let few = MemoryEngine.patterns(episodes: Array(eps.prefix(5)), interventions: [], overrides: [:], profile: p, now: now)
+        t.check("5일치로는 요일 패턴 없음", !few.contains { $0.id.hasPrefix("late-weekday-") })
+        // Claude 입력에 배운 습관 포함
+        if let st = SleepStats(nights: nights(.good), now: at(0, 9)) {
+            let msg = ClaudeClient.userMessage(st, learned: snap.lines)
+            t.check("Claude 입력에 배운 습관", msg.contains("learned_patterns_about_user"))
+        }
     }
 }

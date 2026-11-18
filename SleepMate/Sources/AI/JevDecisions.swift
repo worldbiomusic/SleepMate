@@ -26,11 +26,12 @@ struct DecisionView: Equatable {
 
 struct WindDownInput {
     var minutesToBed: Int
-    var screenCount: Int
-    var screenGoal: Int
+    var screenCount: Int            // 오늘 밤(취침 준비 구간) 감시 앱 사용 분
+    var screenGoal: Int             // 오늘 밤 한도(분)
     var stopped: Bool
     var mood: Mood?
     var fatigue: Int?
+    var snapshot: ContextSnapshot = .empty   // 장기 기억에서 꺼낸 것
 }
 
 struct WindDownDecision: Equatable {
@@ -42,12 +43,14 @@ struct WindDownDecision: Equatable {
     var tone: Tone
     var action: Action
     var view: DecisionView
+    var overGoal = false
+    var learnedNote: String?          // 기억이 판단에 쓰였다면 그 이유
 
     var message: String {
         guard nudge else { return "지금은 그대로 두어도 괜찮아요. 편하게 쉬세요." }
         let body: String
         switch action {
-        case .remindGoal: body = "오늘 화면 목표를 한 번 떠올려 볼까요?"
+        case .remindGoal: body = "오늘 밤 앱 사용 한도를 한 번 떠올려 볼까요?"
         case .focusMode: body = "취침 모드를 켜고 화면을 내려놓을 시간이에요."
         case .sound: body = "잔잔한 소리를 틀어 두고 눈을 감아 보세요."
         case .breathing: body = "1분만 천천히 호흡해 볼까요? 4초 들이쉬고, 7초 멈추고, 8초 내쉬어요."
@@ -56,7 +59,8 @@ struct WindDownDecision: Equatable {
         switch tone {
         case .gentle: return body
         case .cheerful: return "잘하고 있어요! " + body
-        case .firm: return "목표를 넘었어요. 지금 멈추면 내일 아침이 가벼워져요. " + body
+        case .firm: return (overGoal ? "오늘 밤 한도를 넘었어요. " : "지금이 멈추기 좋은 때예요. ")
+            + "지금 멈추면 내일 아침이 가벼워져요. " + body
         }
     }
 }
@@ -108,9 +112,13 @@ enum JevDecisions {
 
     static func windDownRule(_ i: WindDownInput) -> WindDownDecision {
         let ratio = Double(i.screenCount) / Double(max(i.screenGoal, 1))
-        let nearBed = (0...30).contains(i.minutesToBed)
-        let nudge = !i.stopped && (ratio >= 0.8 || (nearBed && i.screenCount > 0) || i.minutesToBed < 0)
-        let tone: WindDownDecision.Tone = ratio > 1.2 ? .firm : (ratio < 0.5 ? .cheerful : .gentle)
+        // 기억: 오늘이 '늦게 자는 요일'이면 더 일찍(취침 60분 전부터) 말을 건다
+        let early = i.snapshot.lateTonight != nil
+        let nearBed = (0...(early ? 60 : 30)).contains(i.minutesToBed)
+        let nudge = !i.stopped && (ratio >= 0.8 || (nearBed && (i.screenCount > 0 || early)) || i.minutesToBed < 0)
+        var tone: WindDownDecision.Tone = ratio > 1.2 ? .firm : (ratio < 0.5 ? .cheerful : .gentle)
+        // 기억: 이 사람에게 잘 통했던 말투
+        if nudge, let t = i.snapshot.preferredTone { tone = t }
         let action: WindDownDecision.Action
         if !nudge { action = .none }
         else if ratio >= 1 { action = .focusMode }
@@ -119,15 +127,25 @@ enum JevDecisions {
         else { action = .remindGoal }
         return WindDownDecision(nudge: nudge, tone: tone, action: action,
                                 view: DecisionView(question: "지금 말을 걸까요?", answer: nudge ? "네" : "아니요",
-                                                   confidence: nil, path: .rule, note: "규칙 판단"))
+                                                   confidence: nil, path: .rule, note: "규칙 판단"),
+                                overGoal: ratio >= 1, learnedNote: learnedNote(i.snapshot, used: nudge))
+    }
+
+    static func learnedNote(_ s: ContextSnapshot, used: Bool) -> String? {
+        guard used else { return nil }
+        var parts: [String] = []
+        if let l = s.lateTonight { parts.append(l.title) }
+        if let t = s.preferredTone { parts.append(t == .firm ? "단호한 말투가 잘 통했어요" : (t == .gentle ? "부드러운 말투가 잘 통했어요" : "응원하는 말투가 잘 통했어요")) }
+        return parts.isEmpty ? nil : "기억: " + parts.joined(separator: " · ")
     }
 
     static func windDown(_ i: WindDownInput) async -> WindDownDecision {
         guard available, config.useWindDown else { return windDownRule(i) }
         let state: [String: Any] = [
             "minutes_until_target_bedtime": i.minutesToBed,
-            "screen_items_watched_tonight": i.screenCount,
-            "screen_goal_tonight": i.screenGoal,
+            "watched_app_minutes_tonight": i.screenCount,
+            "app_minutes_limit_tonight": i.screenGoal,
+            "learned_usually_sleeps_late_on_this_weekday": i.snapshot.lateTonight != nil,
             "user_said_stop_for_tonight": i.stopped,
             "mood": i.mood?.jevName ?? "unknown",
             "fatigue_1_to_5": i.fatigue ?? 0,
@@ -135,14 +153,14 @@ enum JevDecisions {
         let qs: [String: JevQuestion] = [
             "should_nudge": .noul(
                 instructions: "A sleep app is helping the user wind down before bed. Should it gently interrupt the user right now?",
-                yes: "Bedtime is near or passed, or the user is close to or over tonight's screen goal, and they have not stopped yet.",
+                yes: "Bedtime is near or passed, or the user is close to or over tonight's app time limit, or the user usually sleeps late on this weekday, and they have not stopped yet.",
                 no: "Bedtime is still far away, the user is well under the goal, or the user already decided to stop."),
             "tone": .choice(instructions: "Which tone fits the message best?",
                             options: ["gentle": "Soft and calm reminder.",
                                       "cheerful": "Encouraging; the user is doing well.",
                                       "firm": "Clear and direct; the user is well over the goal or past bedtime."]),
             "action": .choice(instructions: "Which single action should the app suggest?",
-                              options: ["remind_goal": "Remind the screen goal.",
+                              options: ["remind_goal": "Remind tonight's app time limit.",
                                         "suggest_focus_mode": "Turn on sleep focus mode and put the phone down.",
                                         "suggest_sleep_sound": "Play calming sleep sounds (good when stressed or anxious).",
                                         "suggest_breathing": "Do a one-minute breathing exercise (good right before bed).",
@@ -151,7 +169,8 @@ enum JevDecisions {
         do {
             let a = try await JevClient.decide(state: state, questions: qs)
             let p = a["should_nudge"]?.noul ?? 0
-            let tone = WindDownDecision.Tone(rawValue: a["tone"]?.choice ?? "") ?? .gentle
+            var tone = WindDownDecision.Tone(rawValue: a["tone"]?.choice ?? "") ?? .gentle
+            if p >= 0.5, let t = i.snapshot.preferredTone { tone = t }      // 잘 통했던 말투가 우선
             let action = WindDownDecision.Action(rawValue: a["action"]?.choice ?? "") ?? .remindGoal
             let view = DecisionView(question: "지금 말을 걸까요?", answer: p >= 0.5 ? "네" : "아니요",
                                     confidence: p >= 0.5 ? p : 1 - p,
@@ -159,7 +178,9 @@ enum JevDecisions {
                                     path: .light)
             AgentLog.shared.add(.windDown, path: .light,
                                 action: "개입 \(Int(p * 100))% · \(tone.rawValue) · \(action.rawValue)")
-            return WindDownDecision(nudge: p >= 0.5, tone: tone, action: p >= 0.5 ? action : .none, view: view)
+            return WindDownDecision(nudge: p >= 0.5, tone: tone, action: p >= 0.5 ? action : .none, view: view,
+                                    overGoal: i.screenCount >= i.screenGoal,
+                                    learnedNote: learnedNote(i.snapshot, used: p >= 0.5))
         } catch {
             var r = windDownRule(i)
             r.view.note = "Jev 실패 → 규칙: \(error.localizedDescription)"

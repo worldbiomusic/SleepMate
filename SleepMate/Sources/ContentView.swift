@@ -36,10 +36,14 @@ struct HomeView: View {
                 }
 
                 SetupChecklist()
+                MemoryQuestionCard()
 
                 if store.hasData || store.isDemo {
                     Section {
                         DashboardHeader(openToday: openToday)
+                    }
+                    Section {
+                        MemorySummaryRow()
                     }
                 }
 
@@ -178,6 +182,10 @@ struct HomeView: View {
                     TestLabView()
                 } else if screen == "report" {
                     SleepReportView()
+                } else if screen == "memory" {
+                    MemoryView()
+                } else if screen == "usage" {
+                    UsageSetupView()
                 } else if screen == "jev" {
                     JevSettingsView()
                 } else if screen == "notion" {
