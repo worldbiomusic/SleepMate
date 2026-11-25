@@ -52,10 +52,18 @@ while i < len(flags):
     else:
         i += 1
 print("magenta runs (0.1s):", runs)
-if len(runs) < 2:
+if not runs:
     sys.exit("시작/끝 표시를 찾지 못했어요")
-off = (runs[0][1] + 1) / 10 + 0.15
-dur = runs[-1][0] / 10 - off - 0.1
+text = open(log, encoding="utf-8", errors="ignore").read()
+t0 = float(re.search(r"\[Tour\] start ([0-9.]+)", text).group(1))
+t1 = float(re.search(r"\[Tour\] end ([0-9.]+)", text).group(1))
+real = t1 - t0 - 1.8                         # 끝 표시 전 0.6초 + 표시 1.2초 제외
+end_at = runs[-1][0] / 10
+if len(runs) >= 2:
+    off = (runs[0][1] + 1) / 10 + 0.15
+else:                                        # 시작 표시를 놓쳤으면 끝 표시에서 거꾸로
+    off = max(0, end_at - 0.6 - real)
+dur = end_at - off - 0.1
 print(f"tour offset {off:.2f}s, duration {dur:.2f}s")
 encode(["-ss", f"{off:.2f}", "-i", tour, "-t", f"{dur:.2f}",
         "-vf", f"scale={W}:-2,fps=30,format=yuv420p"], f"{work}/2-tour.mp4")
