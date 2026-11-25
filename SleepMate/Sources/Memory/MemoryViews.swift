@@ -6,7 +6,7 @@ struct MemoryQuestionCard: View {
     @State private var memory = MemoryStore.shared
 
     var body: some View {
-        if let q = memory.pendingQuestion, let text = q.question {
+        if let q = memory.pendingQuestion, let text = q.question, !DemoTour.shared.isOn {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("SleepMate가 확인하고 싶어요", systemImage: "questionmark.bubble.fill")

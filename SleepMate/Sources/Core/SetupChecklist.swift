@@ -31,7 +31,7 @@ struct SetupChecklist: View {
     var body: some View {
         let list = steps
         let doneCount = list.filter(\.done).count
-        if !hidden && doneCount < list.count && !DemoMode.isOn {
+        if !hidden && doneCount < list.count && !DemoMode.isOn && !DemoTour.shared.isOn {
             Section {
                 HStack(spacing: 14) {
                     ZStack {

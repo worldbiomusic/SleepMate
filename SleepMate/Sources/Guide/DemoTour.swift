@@ -41,21 +41,29 @@ final class DemoTour {
         lab.tomorrow = .early
         lab.clock = .morning
         lab.apply(store: store, ctx: ctx, calendar: calendar)
-        try? await Task.sleep(for: .seconds(2.0))
+        try? await Task.sleep(for: .seconds(1.0))
+        // 모든 탭을 한 번씩 미리 그려 둔다 (CI 시뮬레이터는 첫 렌더가 느려 자막과 화면이 어긋남)
+        for t in [AppTab.today, .alarm, .winddown, .guide, .home] {
+            tab = t
+            try? await Task.sleep(for: .seconds(1.5))
+        }
         marker = true
         try? await Task.sleep(for: .seconds(1.2))
         marker = false
         log("start \(Date().timeIntervalSince1970)")
         for s in steps {
             if lab.clock != s.clock {
+                caption = nil
                 lab.clock = s.clock
                 lab.apply(store: store, ctx: ctx, calendar: calendar)
+                try? await Task.sleep(for: .seconds(1.0))
             }
-            withAnimation(.easeInOut(duration: 0.3)) {
+            if tab != s.tab || showMemory != s.memory {
                 tab = s.tab
-                caption = s.caption
                 showMemory = s.memory
+                try? await Task.sleep(for: .seconds(0.6))     // 화면이 먼저 바뀌고
             }
+            withAnimation(.easeInOut(duration: 0.3)) { caption = s.caption }   // 그다음 자막
             try? await Task.sleep(for: .seconds(s.seconds))
         }
         showMemory = false
