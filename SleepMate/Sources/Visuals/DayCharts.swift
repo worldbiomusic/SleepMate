@@ -55,6 +55,19 @@ struct DayTimelineChart: View {
         return start...end
     }
 
+    /// (표시, 줄) — 줄 0 = 위, 1 = 아래, -1 = 이름 생략 (같은 줄에서 100분 안에 이웃이 있으면)
+    private var labeledMarkers: [(DayMarker, Int)] {
+        var last: [Date?] = [nil, nil]
+        let gap: TimeInterval = 100 * 60
+        return markers.sorted { $0.time < $1.time }.map { m in
+            for lane in 0..<2 where last[lane].map({ m.time.timeIntervalSince($0) >= gap }) ?? true {
+                last[lane] = m.time
+                return (m, lane)
+            }
+            return (m, -1)
+        }
+    }
+
     var body: some View {
         Chart {
             ForEach(items.filter { !$0.isAllDay }) { it in
@@ -69,13 +82,13 @@ struct DayTimelineChart: View {
                         }
                     }
             }
-            // 가까운 표시끼리 겹치지 않게 위/아래 번갈아 이름 표시
-            ForEach(Array(markers.sorted { $0.time < $1.time }.enumerated()), id: \.element.id) { idx, m in
+            // 가까운 표시끼리 겹치지 않게: 위/아래 두 줄에 배치하고, 자리가 없으면 점만 표시
+            ForEach(labeledMarkers, id: \.0.id) { m, lane in
                 PointMark(x: .value("시각", m.time), y: .value("구분", "추천"))
                     .foregroundStyle(m.color)
                     .symbolSize(80)
-                    .annotation(position: idx % 2 == 0 ? .top : .bottom, spacing: 2) {
-                        Text(m.label).font(.system(size: 9))
+                    .annotation(position: lane == 1 ? .bottom : .top, spacing: 2) {
+                        if lane >= 0 { Text(m.label).font(.system(size: 9)).fixedSize() }
                     }
             }
             if range.contains(now) {
