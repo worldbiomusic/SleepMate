@@ -223,16 +223,36 @@ private struct SeededRandom {
 
 private struct GuideVideoSection: View {
     @State private var player: AVPlayer? = Bundle.main.url(forResource: "demo-tour", withExtension: "mp4").map { AVPlayer(url: $0) }
+    @State private var started = false
 
     var body: some View {
         if let player {
             VStack(alignment: .leading, spacing: 12) {
-                GuideSectionTitle(number: "00  영상으로 보기", title: "30초 사용 예시",
+                GuideSectionTitle(number: "00  영상으로 보기", title: "45초 사용 예시",
                                   subtitle: "아침 요약 → 오늘 추천 → 기상 알람 → 취침 준비 → 기억 → 애플워치")
                 HStack {
                     Spacer()
-                    VideoPlayer(player: player)
-                        .aspectRatio(540.0 / 1170.0, contentMode: .fit)
+                    ZStack {
+                        VideoPlayer(player: player)
+                        if !started {
+                            // 재생 전: 표지 + 재생 버튼 (검은 화면 대신)
+                            if let poster = UIImage(named: "guide-video-poster.jpg") {
+                                Image(uiImage: poster).resizable().scaledToFill()
+                            }
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 64))
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(.white, Color.black.opacity(0.45))
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        guard !started else { return }
+                        started = true
+                        player.seek(to: .zero)
+                        player.play()
+                    }
+                        .aspectRatio(540.0 / 1174.0, contentMode: .fit)
                         .frame(height: 460)
                         .clipShape(RoundedRectangle(cornerRadius: 22))
                         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.gray.opacity(0.3)))
