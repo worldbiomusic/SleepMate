@@ -104,10 +104,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan media
-          git rm -rq --cached . && git clean -fdq
+          git rm -rq --cached . && git clean -fdqx
+          rm -rf build SleepMate SleepMate.xcodeproj
           cp -R /tmp/media/* .
           printf '# Demo media\n\nCommit: %s\n' "$GITHUB_SHA" > README.md
-          git add -A
+          git add README.md demo-tour.mp4 watch-*.png frames
           git commit -qm "Demo media for $GITHUB_SHA"
           git push -f origin media
 
