@@ -20,6 +20,8 @@ final class DemoTour {
     var caption: String?
     var showMemory = false
     var marker = false            // 녹화에서 시작·끝을 찾기 위한 전체 화면 표시 색
+    var stepStart = Date()
+    var stepSeconds = 4.0
 
     let steps: [Step] = [
         Step(tab: .home, clock: .morning, caption: "아침 7:30 · 어젯밤 수면을 점수와 요약으로 보여 줘요", seconds: 4.5),
@@ -63,6 +65,8 @@ final class DemoTour {
                 showMemory = s.memory
                 try? await Task.sleep(for: .seconds(0.6))     // 화면이 먼저 바뀌고
             }
+            stepStart = Date()
+            stepSeconds = s.seconds
             withAnimation(.easeInOut(duration: 0.3)) { caption = s.caption }   // 그다음 자막
             try? await Task.sleep(for: .seconds(s.seconds))
         }
@@ -75,21 +79,35 @@ final class DemoTour {
     }
 }
 
-/// 화면 아래 자막
+/// 화면 아래 자막 + 장면 진행 막대
+/// (막대가 매 프레임 움직여야 시뮬레이터 녹화가 정지 화면을 건너뛰지 않는다)
 struct TourCaption: View {
     let text: String
     var bottom: CGFloat = 96
+    @State private var tour = DemoTour.shared
 
     var body: some View {
-        Text(text)
-            .font(.callout.weight(.semibold))
-            .multilineTextAlignment(.center)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16).padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color.black.opacity(0.78)))
-            .padding(.horizontal, 20)
-            .padding(.bottom, bottom)
-            .transition(.opacity)
-            .id(text)
+        VStack(spacing: 8) {
+            Text(text)
+                .font(.callout.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white)
+            TimelineView(.animation) { tl in
+                let p = min(1, max(0, tl.date.timeIntervalSince(tour.stepStart) / max(tour.stepSeconds, 0.1)))
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.25))
+                        Capsule().fill(Color.white).frame(width: g.size.width * p)
+                    }
+                }
+                .frame(height: 3)
+            }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Color.black.opacity(0.78)))
+        .padding(.horizontal, 20)
+        .padding(.bottom, bottom)
+        .transition(.opacity)
+        .id(text)
     }
 }
