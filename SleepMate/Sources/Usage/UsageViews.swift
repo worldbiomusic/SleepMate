@@ -55,6 +55,7 @@ struct TonightUsageSection: View {
                     ctx.stopScreen()
                     ctx.record(scenario: "02", key: "screen-stop", title: "화면 그만 보기", response: .accepted)
                     MemoryStore.shared.markLatestAccepted(kinds: [.windDown, .appLimit, .bedtimeNotice], now: Date())
+                    WatchBridge.shared.push()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(ctx.today.stoppedScreen)

@@ -1,3 +1,4 @@
+import AVKit
 import Charts
 import SwiftUI
 import UIKit
@@ -37,6 +38,7 @@ struct GuideContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
             GuideHero().id(0)
+            GuideVideoSection().id(10)
             ProblemSection().id(1)
             ScenarioSection(zoom: $zoom).id(2)
             ArchitectureSection().id(3)
@@ -45,6 +47,7 @@ struct GuideContent: View {
             DayRhythmSection().id(6)
             PrivacySection().id(7)
             PipelineSection().id(8)
+            WatchSection(zoom: $zoom).id(11)
             GuideFooter().id(9)
         }
         .padding(.horizontal)
@@ -213,6 +216,64 @@ private struct SeededRandom {
     mutating func next() -> CGFloat {
         state = state &* 6364136223846793005 &+ 1442695040888963407
         return CGFloat((state >> 33) % 10_000) / 10_000
+    }
+}
+
+// MARK: - 사용 예시 영상
+
+private struct GuideVideoSection: View {
+    @State private var player: AVPlayer? = Bundle.main.url(forResource: "demo-tour", withExtension: "mp4").map { AVPlayer(url: $0) }
+
+    var body: some View {
+        if let player {
+            VStack(alignment: .leading, spacing: 12) {
+                GuideSectionTitle(number: "00  영상으로 보기", title: "30초 사용 예시",
+                                  subtitle: "아침 요약 → 오늘 추천 → 기상 알람 → 취침 준비 → 기억 → 애플워치")
+                HStack {
+                    Spacer()
+                    VideoPlayer(player: player)
+                        .aspectRatio(540.0 / 1170.0, contentMode: .fit)
+                        .frame(height: 460)
+                        .clipShape(RoundedRectangle(cornerRadius: 22))
+                        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.gray.opacity(0.3)))
+                        .onDisappear { player.pause() }
+                    Spacer()
+                }
+                Text("테스트 모드의 4주 가상 기록으로 시뮬레이터에서 녹화했어요.").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - 애플워치
+
+private struct WatchSection: View {
+    @Binding var zoom: GuideShot?
+    private let shots = [GuideShot(id: "guide-watch-1", caption: "워치 · 오늘 밤 (남은 시간 · 앱 사용 · 오늘은 여기까지)"),
+                         GuideShot(id: "guide-watch-2", caption: "워치 · 어젯밤 점수와 오늘의 추천"),
+                         GuideShot(id: "guide-watch-3", caption: "워치 · 4-7-8 호흡 (손목 진동 안내)")]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            GuideSectionTitle(number: "09  손목에서", title: "애플워치 앱",
+                              subtitle: "판단은 아이폰이 하고, 워치는 보여 주고 입력받아요 (Companion Relay)")
+            Card {
+                HStack(spacing: 8) {
+                    ForEach(shots) { s in
+                        Button { zoom = s } label: { ShotThumb(shot: s) }.buttonStyle(.plain)
+                    }
+                }
+                ForEach(["오늘 밤: 취침까지 남은 시간 링, 오늘 밤 앱 사용, 지금 한마디, ‘오늘은 여기까지’",
+                         "어젯밤: 수면 점수와 오늘의 추천 한 가지",
+                         "호흡: 4-7-8 호흡을 손목 진동으로 안내",
+                         "기분: 한 번 눌러 아이폰으로 전송 → 한마디·사운드에 반영",
+                         "알람: 내일 기상 시각과 이유"], id: \.self) { t in
+                    Label(t, systemImage: "applewatch").font(.footnote)
+                }
+                Text("한도 알림·취침 알림은 아이폰이 잠겨 있으면 워치로 자동 전달돼 손목에서 진동해요.")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

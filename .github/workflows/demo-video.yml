@@ -1,0 +1,122 @@
+name: Demo video
+
+# 소개 탭용 사용 예시 영상 + 애플워치 화면을 만든다.
+# 아이폰 시뮬레이터에서 앱의 자동 시연(-demoTour YES)을 녹화하고, 워치 시뮬레이터 화면을 찍어
+# 표지/워치 장면과 이어 붙인 뒤 `media` 브랜치에 올린다.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  video:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Tools
+        run: |
+          brew install xcodegen
+          which ffmpeg || brew install ffmpeg
+          python3 -m pip install --quiet --break-system-packages pillow || python3 -m pip install --quiet --user pillow
+          xcodegen generate
+
+      - name: Boot simulators
+        run: |
+          UDID=$(xcrun simctl list devices available -j | jq -r '
+            [.devices | to_entries[] | select(.key | test("iOS")) | .value[]
+             | select(.name | test("^iPhone [0-9]+ Pro$"))] | last | .udid')
+          WUDID=$(xcrun simctl list devices available -j | jq -r '
+            [.devices | to_entries[] | select(.key | test("watchOS")) | .value[]
+             | select(.name | startswith("Apple Watch"))] | last | .udid')
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          echo "WUDID=$WUDID" >> "$GITHUB_ENV"
+          xcrun simctl list devices | grep -E "$UDID|$WUDID"
+          xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID" -b
+          if [ "$WUDID" != "null" ] && [ -n "$WUDID" ]; then xcrun simctl boot "$WUDID"; xcrun simctl bootstatus "$WUDID" -b; fi
+
+      - name: Build iPhone app (includes watch app)
+        run: |
+          set -o pipefail
+          xcodebuild -project SleepMate.xcodeproj -scheme SleepMate -configuration Debug \
+            -destination "id=$UDID" -derivedDataPath build CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee ios.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" ios.log
+
+      - name: Watch screenshots
+        if: env.WUDID != 'null'
+        run: |
+          set -o pipefail
+          xcodebuild -project SleepMate.xcodeproj -scheme SleepMateWatch -configuration Debug \
+            -destination "id=$WUDID" -derivedDataPath build CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee watch.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" watch.log
+          WAPP=$(ls -d build/Build/Products/Debug-watchsimulator/SleepMateWatch.app)
+          mkdir -p media
+          xcrun simctl install "$WUDID" "$WAPP"
+          for n in 0 1 2 3 4; do
+            xcrun simctl terminate "$WUDID" com.jeonghanlee.sleepmate.watchkitapp 2>/dev/null || true
+            xcrun simctl launch "$WUDID" com.jeonghanlee.sleepmate.watchkitapp -demoData YES -watchPage $n \
+              -AppleLanguages "(ko)" -AppleLocale ko_KR
+            sleep 5
+            xcrun simctl io "$WUDID" screenshot "media/watch-$n.png"
+          done
+          ls -la media
+
+      - name: Record demo tour
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/SleepMate.app
+          BID=com.jeonghanlee.sleepmate
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl status_bar "$UDID" override --batteryState charged --batteryLevel 100 \
+            --wifiBars 3 --cellularBars 4 || true
+          mkdir -p media logs
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force tour.mov &
+          REC=$!
+          python3 -c "import time; print(time.time())" > rec_start.txt
+          sleep 1
+          xcrun simctl launch --stderr="$PWD/logs/tour.err" "$UDID" "$BID" \
+            -demoTour YES -AppleLanguages "(ko)" -AppleLocale ko_KR
+          for i in $(seq 1 120); do
+            grep -q "\[Tour\] end" logs/tour.err 2>/dev/null && break
+            sleep 1
+          done
+          sleep 1
+          kill -INT $REC; wait $REC || true
+          cat logs/tour.err | grep "\[Tour\]"
+          ls -la tour.mov
+
+      - name: Assemble video
+        run: |
+          python3 .github/scripts/make_demo_video.py tour.mov "$(cat rec_start.txt)" logs/tour.err \
+            media/demo-tour.mp4 media/frames media/watch-0.png media/watch-1.png media/watch-2.png
+          ls -la media media/frames
+
+      - name: Publish to `media` branch
+        run: |
+          cp -R media /tmp/media
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan media
+          git rm -rq --cached . && git clean -fdq
+          cp -R /tmp/media/* .
+          printf '# Demo media\n\nCommit: %s\n' "$GITHUB_SHA" > README.md
+          git add -A
+          git commit -qm "Demo media for $GITHUB_SHA"
+          git push -f origin media
+
+      - name: Upload logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-video-logs
+          path: |
+            ios.log
+            watch.log
+            logs/

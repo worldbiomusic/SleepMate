@@ -61,6 +61,14 @@ jobs:
       - name: Embed entitlements (ad-hoc sign)
         run: |
           APP=build/Build/Products/Release-iphoneos/SleepMate.app
+          # 안쪽(워치 앱)부터 서명해야 바깥 서명이 깨지지 않는다
+          if [ -d "$APP/Watch/SleepMateWatch.app" ]; then
+            codesign --force --sign - --timestamp=none "$APP/Watch/SleepMateWatch.app"
+            echo "워치 앱 포함:"; ls "$APP/Watch"
+            plutil -p "$APP/Watch/SleepMateWatch.app/Info.plist" | grep -E "WKApplication|WKCompanion|CFBundleIdentifier"
+          else
+            echo "::warning::워치 앱이 IPA에 포함되지 않았습니다"
+          fi
           codesign --force --sign - --timestamp=none \
             --entitlements SleepMate/Resources/SleepMate.entitlements "$APP"
           codesign -d --entitlements :- "$APP"

@@ -254,6 +254,7 @@ final class UsageStore {
         }
         sessions.append(s)
         save()
+        WatchBridge.shared.push()
         let used = todayMinutes(app, now: now)
         AgentLog.shared.add(.windDown, path: .rule,
                             action: "\(UsageMath.displayName(app)) 열림 · 오늘 \(used)분"
@@ -272,6 +273,7 @@ final class UsageStore {
         sessions[i].end = now
         resolveAlert(sessions[i], closedAt: now)
         save()
+        WatchBridge.shared.push()
         let mins = UsageMath.minutes([sessions[i]], from: .distantPast, to: .distantFuture, now: now)
         return "기록 종료: \(UsageMath.displayName(app)) \(mins)분 · 오늘 \(todayMinutes(app, now: now))분"
     }

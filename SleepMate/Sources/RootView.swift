@@ -20,6 +20,7 @@ struct ContentView: View {
     @Environment(ContextStore.self) private var ctx
     @Environment(CalendarService.self) private var calendar
     @State private var router = AppRouter.shared
+    @State private var tour = DemoTour.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab: AppTab = {
         if let t = UserDefaults.standard.string(forKey: "demoTab"), let v = AppTab(rawValue: t) { return v }
@@ -45,6 +46,11 @@ struct ContentView: View {
                 .tag(AppTab.guide)
         }
         .sheet(isPresented: $router.showSettings) { SettingsView() }
+        .sheet(isPresented: $tour.showMemory) { NavigationStack { MemoryView() } }
+        .overlay(alignment: .bottom) {
+            if let c = tour.caption { TourCaption(text: c) }
+        }
+        .onChange(of: tour.tab) { _, t in tab = t }
         .safeAreaInset(edge: .top, spacing: 0) { TestModeBanner() }
         .environment(\.locale, Locale(identifier: "ko_KR"))   // 차트 축(시각·요일)을 한국어로
         // SleepMate가 앞으로 나오면: 다른 앱 사용은 끝난 것 + 기억 통합(하루 첫 실행 · 새 수면 기록)
@@ -53,6 +59,7 @@ struct ContentView: View {
             Task {
                 await UsageStore.shared.closeAll()
                 MemoryStore.shared.consolidate(nights: store.nights, ctx: ctx)
+                WatchBridge.shared.push()
             }
         }
         .onChange(of: store.lastLoadedAt) { _, _ in
@@ -60,6 +67,11 @@ struct ContentView: View {
             MemoryStore.shared.consolidate(nights: store.nights, ctx: ctx)
         }
         .task {
+            WatchBridge.shared.start(store: store, ctx: ctx, calendar: calendar)
+            if DemoTour.shared.isOn {
+                await DemoTour.shared.run(store: store, ctx: ctx, calendar: calendar)
+                return
+            }
             SelfTestCLI.runIfRequested()
             await LiveAPITests.runIfRequested()
             // CI: -testSleep short -testToday morningFocus -testTomorrow early -testClock evening
