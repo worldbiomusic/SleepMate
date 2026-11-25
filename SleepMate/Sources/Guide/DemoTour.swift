@@ -19,6 +19,7 @@ final class DemoTour {
     var tab: AppTab = .home
     var caption: String?
     var showMemory = false
+    var marker = false            // 녹화에서 시작·끝을 찾기 위한 전체 화면 표시 색
 
     let steps: [Step] = [
         Step(tab: .home, clock: .morning, caption: "아침 7:30 · 어젯밤 수면을 점수와 요약으로 보여 줘요", seconds: 4.5),
@@ -40,7 +41,10 @@ final class DemoTour {
         lab.tomorrow = .early
         lab.clock = .morning
         lab.apply(store: store, ctx: ctx, calendar: calendar)
-        try? await Task.sleep(for: .seconds(1.5))
+        try? await Task.sleep(for: .seconds(2.0))
+        marker = true
+        try? await Task.sleep(for: .seconds(1.2))
+        marker = false
         log("start \(Date().timeIntervalSince1970)")
         for s in steps {
             if lab.clock != s.clock {
@@ -55,6 +59,10 @@ final class DemoTour {
             try? await Task.sleep(for: .seconds(s.seconds))
         }
         showMemory = false
+        caption = nil
+        try? await Task.sleep(for: .seconds(0.6))
+        marker = true
+        try? await Task.sleep(for: .seconds(1.2))
         log("end \(Date().timeIntervalSince1970)")
     }
 }
@@ -62,6 +70,7 @@ final class DemoTour {
 /// 화면 아래 자막
 struct TourCaption: View {
     let text: String
+    var bottom: CGFloat = 96
 
     var body: some View {
         Text(text)
@@ -71,7 +80,7 @@ struct TourCaption: View {
             .padding(.horizontal, 16).padding(.vertical, 10)
             .background(RoundedRectangle(cornerRadius: 14).fill(Color.black.opacity(0.78)))
             .padding(.horizontal, 20)
-            .padding(.bottom, 96)
+            .padding(.bottom, bottom)
             .transition(.opacity)
             .id(text)
     }

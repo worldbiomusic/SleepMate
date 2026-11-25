@@ -26,11 +26,36 @@ def encode(cmd_tail, final):
     os.replace(tmp, final)          # 끝까지 성공했을 때만 이름을 바꾼다
 
 
-# 1) 투어 구간 잘라내기
-text = open(log, encoding="utf-8", errors="ignore").read()
-start = float(re.search(r"\[Tour\] start ([0-9.]+)", text).group(1))
-end = float(re.search(r"\[Tour\] end ([0-9.]+)", text).group(1))
-off, dur = max(0, start - rec_start - 0.3), end - start + 0.6
+# 1) 투어 구간 찾기: 앱이 시작·끝에 띄운 자홍색 전체 화면을 영상에서 직접 찾는다
+#    (시뮬레이터 녹화는 시작이 늦고 화면이 바뀔 때만 프레임을 써서 시각 계산이 어긋남)
+probe = f"{work}/probe"
+os.makedirs(probe, exist_ok=True)
+run(["ffmpeg", "-y", "-loglevel", "error", "-i", tour, "-vf", "fps=10,scale=24:-1", f"{probe}/p%05d.png"])
+files = sorted(os.listdir(probe))
+
+
+def magenta(path):
+    px = Image.open(path).convert("RGB").resize((6, 12)).getdata()
+    hits = sum(1 for r, g, b in px if r > 200 and g < 80 and b > 200)
+    return hits > len(px) * 0.8
+
+
+flags = [magenta(f"{probe}/{f}") for f in files]
+runs, i = [], 0
+while i < len(flags):
+    if flags[i]:
+        j = i
+        while j + 1 < len(flags) and flags[j + 1]:
+            j += 1
+        runs.append((i, j))
+        i = j + 1
+    else:
+        i += 1
+print("magenta runs (0.1s):", runs)
+if len(runs) < 2:
+    sys.exit("시작/끝 표시를 찾지 못했어요")
+off = (runs[0][1] + 1) / 10 + 0.15
+dur = runs[-1][0] / 10 - off - 0.1
 print(f"tour offset {off:.2f}s, duration {dur:.2f}s")
 encode(["-ss", f"{off:.2f}", "-i", tour, "-t", f"{dur:.2f}",
         "-vf", f"scale={W}:-2,fps=30,format=yuv420p"], f"{work}/2-tour.mp4")
@@ -122,7 +147,7 @@ os.replace(tmp, out)
 # 6) 확인용 프레임 (가장 많이 보이는 순간들)
 total = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration",
                                        "-of", "csv=p=0", out]).strip())
-for i, t in enumerate([1.4, 5, 9.5, 14, 18.5, 23, 28, total - 2.5]):
+for i, t in enumerate([1.4, 4.5, 9, 13, 17.5, 22, 26, 30, total - 2.5]):
     if t < total:
         run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.2f}", "-i", out, "-frames:v", "1",
              "-q:v", "3", f"{frames_dir}/f{i}-{t:.0f}s.jpg"])

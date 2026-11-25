@@ -46,9 +46,15 @@ struct ContentView: View {
                 .tag(AppTab.guide)
         }
         .sheet(isPresented: $router.showSettings) { SettingsView() }
-        .sheet(isPresented: $tour.showMemory) { NavigationStack { MemoryView() } }
+        .sheet(isPresented: $tour.showMemory) {
+            NavigationStack { MemoryView() }
+                .overlay(alignment: .bottom) { if let c = tour.caption { TourCaption(text: c, bottom: 40) } }
+        }
         .overlay(alignment: .bottom) {
             if let c = tour.caption { TourCaption(text: c) }
+        }
+        .overlay {
+            if tour.marker { Color(red: 1, green: 0, blue: 1).ignoresSafeArea() }
         }
         .onChange(of: tour.tab) { _, t in tab = t }
         .safeAreaInset(edge: .top, spacing: 0) { TestModeBanner() }
