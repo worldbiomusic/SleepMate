@@ -23,9 +23,42 @@ enum LiveAPIFullTests {
             await classifyMany()
             await sounds()
         }
-        if KeyStore.load() != nil { await claudePresets() }
+        if KeyStore.load() != nil {
+            await claudePresets()
+            await interview()
+        }
         await failureFallbacks()
         out("SUMMARY total=\(total) failed=\(failed)")
+    }
+
+    // MARK: Claude 첫 설정 인터뷰 (자유 문장 → 구조화)
+
+    private static func interview() async {
+        let model = "claude-haiku-5-5"
+        let t0 = Date()
+        let answer = "평일엔 새벽 1시에 자서 8시에 일어나고 주말엔 3시쯤 자서 11시에 일어나요. 커피는 하루 세 잔인데 마지막은 오후 5시쯤이에요."
+        do {
+            let step = try await InterviewClient.next(history: [.init(role: .user, text: answer)],
+                                                      known: PersonalProfile(), model: model)
+            info("interview \(ms(since: t0))ms reply=\(step.reply)")
+            check("인터뷰: 평일 취침 01:00", step.update.workdayBed == 60, "\(String(describing: step.update.workdayBed))")
+            check("인터뷰: 평일 기상 08:00", step.update.workdayWake == 480, "\(String(describing: step.update.workdayWake))")
+            check("인터뷰: 쉬는 날 기상 11:00", step.update.freeWake == 660, "\(String(describing: step.update.freeWake))")
+            check("인터뷰: 카페인 3잔", step.update.caffeineCups == 3, "\(String(describing: step.update.caffeineCups))")
+            check("인터뷰: 마지막 카페인 17:00", step.update.lastCaffeine == 17 * 60, "\(String(describing: step.update.lastCaffeine))")
+            check("인터뷰: 다음 질문이 있음", !step.done && step.reply.count > 5, step.reply)
+            check("인터뷰: 빠른 답 2~4개", (2...4).contains(step.quickReplies.count), "\(step.quickReplies)")
+            var p = PersonalProfile(); p.merge(step.update)
+            let recs = StrategyLibrary.recommend(p, bedtime: 60).map { $0.0.id }
+            check("인터뷰 → 커피 마감 추천", recs.contains("caffeine-cutoff"), recs.joined(separator: ","))
+            // 위험 신호
+            let flag = try await InterviewClient.next(
+                history: [.init(role: .user, text: "룸메이트가 제가 코를 심하게 골다가 숨을 멈춘대요. 낮에 운전하다 졸기도 해요.")],
+                known: PersonalProfile(), model: model)
+            check("인터뷰: 위험 신호 → red_flag", flag.redFlag, flag.reply)
+        } catch {
+            check("인터뷰 호출", false, error.localizedDescription)
+        }
     }
 
     // MARK: Jev ① 상황 매트릭스

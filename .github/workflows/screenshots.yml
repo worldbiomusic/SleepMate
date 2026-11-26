@@ -108,6 +108,9 @@ jobs:
           shoot n5-why           -testSleep good -testClock evening -demoTab now -demoWhy YES
           shoot n6-records       -testSleep short -testClock morning -demoTab records
           shoot n7-settings      -testSleep good -demoTab settings
+          shoot s1-strategies    -demoData YES -demoScreen strategies
+          shoot s2-strategy      -demoData YES -demoScreen strategy
+          shoot s3-interview     -demoData YES -demoScreen interview
 
           # ---- 테스트 모드 (더미 데이터) ----
           shoot t1-short-today   -testSleep short -testToday morningFocus -testClock morning -demoTab today

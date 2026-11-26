@@ -175,6 +175,12 @@ struct HomeView: View {
                     NotionSettingsView()
                 } else if screen == "sound" {
                     List { SoundscapeSection() }.navigationTitle("수면 사운드")
+                } else if screen == "strategies" {
+                    StrategyPickerView()
+                } else if screen == "strategy" {
+                    StrategyDetailView(strategy: StrategyLibrary.all[1])
+                } else if screen == "interview" {
+                    InterviewView()
                 } else if screen == "coach" {
                     List { Section { CoachCard() } }
                         .navigationTitle("수면 코치")

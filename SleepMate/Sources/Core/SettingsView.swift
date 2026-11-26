@@ -31,6 +31,19 @@ struct SettingsView: View {
                         Label("SleepMate 소개 · 사용 영상", systemImage: "play.rectangle.fill")
                     }
                 }
+                Section {
+                    NavigationLink {
+                        StrategyPickerView()
+                    } label: {
+                        LabeledContent {
+                            Text("\(PersonalStore.shared.profile.chosen.count)개 사용 중")
+                        } label: {
+                            Label("나에게 맞춘 수면 전략", systemImage: "list.star")
+                        }
+                    }
+                } footer: {
+                    Text("논문·가이드라인으로 확인된 전략만 담았어요. 각 전략에서 근거 원문을 볼 수 있어요.")
+                }
                 sleepGoalSection
                 morningSection
                 eveningSection

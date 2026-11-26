@@ -47,6 +47,7 @@ enum SelfTestSuite {
         usageTests(t)
         memoryTests(t)
         nowTests(t)
+        strategyTests(t)
         return t.results
     }
 
@@ -962,5 +963,82 @@ extension SelfTestSuite {
 
         t.equal("예전 탭 이름 → 지금 + 자세히", AppTab.fromDemo("winddown").map { "\($0.0)-\($0.1?.rawValue ?? "")" }, "now-winddown")
         t.equal("예전 홈 → 기록", AppTab.fromDemo("home")?.0, .records)
+    }
+}
+
+// MARK: - 근거 기반 전략 · 인터뷰
+
+extension SelfTestSuite {
+    static func strategyTests(_ t: TestRecorder) {
+        t.group = "수면 전략"
+        let lib = StrategyLibrary.all
+        t.check("전략마다 근거(DOI)가 있음", lib.allSatisfy { !$0.evidence.isEmpty && $0.evidence.allSatisfy { $0.doi.hasPrefix("10.") } })
+        t.equal("전략 id 중복 없음", Set(lib.map(\.id)).count, lib.count)
+        t.check("전략마다 시간대가 있음", lib.allSatisfy { !$0.when.isEmpty })
+        t.equal("메타분석은 근거 A", EvidenceLevel.metaAnalysis.grade, "A")
+        t.equal("소규모 실험은 근거 C", EvidenceLevel.labStudy.grade, "C")
+        t.equal("카페인 전략 대표 근거 = 메타분석", StrategyLibrary.strategy("caffeine-cutoff")?.bestLevel, .metaAnalysis)
+
+        // 커피 마감: 23:30 취침 → 9시간 전 14:30 / 예민하면 10시간 전 13:30
+        t.equal("커피 마감 14:30", StrategyLibrary.caffeineCutoff(bedtime: 23 * 60 + 30, sensitive: nil), 14 * 60 + 30)
+        t.equal("예민하면 13:30", StrategyLibrary.caffeineCutoff(bedtime: 23 * 60 + 30, sensitive: true), 13 * 60 + 30)
+        t.equal("새벽 1시 취침 → 16:00", StrategyLibrary.caffeineCutoff(bedtime: 60, sensitive: false), 16 * 60)
+
+        // 크로노타입: 쉬는 날 03:00~11:00 → 가운데 07:00 → 저녁형
+        var p = PersonalProfile()
+        p.freeBed = 3 * 60; p.freeWake = 11 * 60
+        p.workdayBed = 60; p.workdayWake = 8 * 60
+        t.equal("쉬는 날 수면 가운데 07:00", StrategyLibrary.midSleepFree(p), 7 * 60)
+        t.equal("저녁형", StrategyLibrary.chronotype(p), .late)
+        t.equal("사회적 시차 2시간 30분", StrategyLibrary.socialJetlag(p), 150)
+        var early = PersonalProfile()
+        early.freeBed = 22 * 60 + 30; early.freeWake = 6 * 60
+        t.equal("22:30~06:00 → 아침형 (가운데 02:15)", StrategyLibrary.chronotype(early), .early)
+
+        // 추천: 늦은 커피 + 저녁형 + 들쭉날쭉
+        p.problems = [.lateBed]
+        p.caffeineCups = 3; p.lastCaffeine = 17 * 60
+        let recs = StrategyLibrary.recommend(p, bedtime: 60).map { $0.0.id }
+        t.check("늦은 커피 → 커피 마감 추천", recs.contains("caffeine-cutoff"), recs.joined(separator: ","))
+        t.check("사회적 시차 큼 → 같은 시각 기상 추천", recs.contains("regular-wake"), recs.joined(separator: ","))
+        t.check("늦게 자는 고민 → 화면 끄기 추천", recs.contains("screen-off"), recs.joined(separator: ","))
+        let reason = StrategyLibrary.recommend(p, bedtime: 60).first { $0.0.id == "caffeine-cutoff" }?.1 ?? ""
+        t.check("추천 이유에 마지막 커피 시각", reason.contains("17:00"), reason)
+        t.equal("정보 없으면 기본 3개", StrategyLibrary.recommend(PersonalProfile(), bedtime: 23 * 60).map { $0.0.id },
+                ["regular-wake", "caffeine-cutoff", "screen-off"])
+
+        // 오늘의 한 줄
+        var up = UserProfile(); up.bedtimeMinutes = 23 * 60 + 30
+        t.equal("오늘 커피 한 줄", StrategyLibrary.todayAction(StrategyLibrary.strategy("caffeine-cutoff")!, profile: up, personal: PersonalProfile()),
+                "오늘 커피는 14:30까지")
+        t.equal("화면 끄기 한 줄", StrategyLibrary.todayAction(StrategyLibrary.strategy("screen-off")!, profile: up, personal: PersonalProfile()),
+                "23:00부터 휴대폰 내려놓기")
+        var chosen = PersonalProfile(); chosen.chosen = ["caffeine-cutoff", "screen-off", "todo-offload", "warm-shower"]
+        t.equal("밤에는 밤 전략만 최대 2개", StrategyLibrary.forNow(.night, personal: chosen).map(\.id), ["screen-off", "todo-offload"])
+        t.equal("아침엔 커피 마감", StrategyLibrary.forNow(.morning, personal: chosen).map(\.id), ["caffeine-cutoff"])
+
+        // 인터뷰 도구 응답 해석
+        let step = InterviewClient.parse([
+            "reply": "좋아요! 커피는 하루에 몇 잔 마셔요?",
+            "quick_replies": ["안 마셔요", "1잔", "2~3잔", "4잔 이상", "다섯번째는 버림"],
+            "extracted": ["workday_bed": "01:00", "workday_wake": "8:00", "free_bed": "25:30",
+                          "problems": ["late_bed", "모르는값"], "caffeine_cups_per_day": 3,
+                          "last_caffeine": "17:00", "exercise_time": "evening", "naps": false] as [String: Any],
+            "red_flag": false, "done": false,
+        ])
+        t.equal("평일 취침 01:00", step.update.workdayBed, 60)
+        t.equal("8:00도 읽음", step.update.workdayWake, 480)
+        t.equal("25:30 → 01:30", step.update.freeBed, 90)
+        t.equal("모르는 고민 값은 버림", step.update.problems, [.lateBed])
+        t.equal("카페인 3잔", step.update.caffeineCups, 3)
+        t.equal("운동 저녁", step.update.exercise, .evening)
+        t.equal("빠른 답 최대 4개", step.quickReplies.count, 4)
+        t.equal("잘못된 시각은 무시", InterviewClient.minutes("밤 11시"), nil)
+        var merged = PersonalProfile()
+        merged.merge(step.update)
+        merged.merge(.init(problems: [.lateBed, .wakeTired]))
+        t.equal("병합: 고민 중복 없이", merged.problems, [.lateBed, .wakeTired])
+        t.check("남은 주제에 음주", merged.missingTopics.contains("음주 빈도"), merged.missingTopics.joined(separator: ","))
+        t.check("요약에 평일 시각", merged.knownSummary.contains("평일 01:00~08:00"), merged.knownSummary)
     }
 }

@@ -81,6 +81,7 @@ struct NowView: View {
                 case .night: nightCard(now)
                 }
                 if m != .start {
+                    StrategyNowSection(mode: m)
                     if m == .day { MemoryQuestionCard() }
                     suggestions(m)
                     if m != .morning { wakeRow(now) }
@@ -439,6 +440,7 @@ struct OnboardingCard: View {
     @Environment(ContextStore.self) private var ctx
     @State private var router = AppRouter.shared
     @State private var notifOn = false
+    @State private var showInterview = false
     @AppStorage("onboardBedtimeSet") private var bedtimeSet = false
 
     private var bedtime: Binding<Date> {
@@ -467,11 +469,16 @@ struct OnboardingCard: View {
             }
         }
         Section {
-            step(2, done: bedtimeSet, title: "취침 목표",
-                 sub: "이 시각을 기준으로 밤 준비와 내일 알람을 계산해요.") {
-                DatePicker("취침", selection: bedtime, displayedComponents: .hourAndMinute)
+            step(2, done: bedtimeSet, title: "나에게 맞추기",
+                 sub: "AI와 2분 대화하면 생활 패턴·크로노타입을 알아내 취침 목표와 근거 있는 전략을 골라 줘요.") {
+                Button { showInterview = true } label: {
+                    Label(PersonalStore.shared.profile.interviewDone ? "다시 대화하기" : "AI와 대화하며 맞추기",
+                          systemImage: "bubble.left.and.text.bubble.right").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                DatePicker("취침 목표", selection: bedtime, displayedComponents: .hourAndMinute)
                 if !bedtimeSet {
-                    Button("이 시각으로 할게요") { bedtimeSet = true }.buttonStyle(.bordered)
+                    Button("대화 없이 이 시각으로 할게요") { bedtimeSet = true }.font(.footnote)
                 }
             }
         }
@@ -489,9 +496,10 @@ struct OnboardingCard: View {
                 }
             }
         } footer: {
-            Text("노션 할 일, 앱 사용시간, AI 키는 필요할 때 '지금' 화면에서 제안하거나 설정에서 연결해요.")
+            Text("노션 할 일, 앱 사용시간은 필요할 때 '지금' 화면에서 제안하거나 설정에서 연결해요.")
         }
         .task { notifOn = await NotificationService.shared.isAuthorized() }
+        .sheet(isPresented: $showInterview) { NavigationStack { InterviewView() } }
     }
 
     @ViewBuilder
@@ -554,6 +562,23 @@ struct WhySheet: View {
                         LabeledContent("컨디션",
                                        value: ctx.today.fatigue == nil ? "수면 기록으로 짐작" : "직접 고른 값 사용")
                     } header: { Text("상태 단어 계산") }
+                }
+
+                let chosen = PersonalStore.shared.effective.chosen.compactMap(StrategyLibrary.strategy)
+                if !chosen.isEmpty {
+                    Section {
+                        ForEach(chosen) { st in
+                            NavigationLink {
+                                StrategyDetailView(strategy: st)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack { Text(st.title).font(.callout); EvidenceBadge(level: st.bestLevel) }
+                                    Text(st.evidence.map(\.citation).joined(separator: " · "))
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    } header: { Text("내가 고른 전략의 근거") }
                 }
 
                 Section {
