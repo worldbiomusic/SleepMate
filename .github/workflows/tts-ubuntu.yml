@@ -1,0 +1,66 @@
+name: Narration TTS (Supertonic)
+# 대안: Supertone의 Supertonic(온디바이스 TTS, 한국어 지원)으로 문장별 음성 만들기
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -q supertonic soundfile numpy
+      - name: Inspect API
+        run: |
+          python - <<'PY'
+          import supertonic, inspect, pkgutil
+          print("version", getattr(supertonic, "__version__", "?"))
+          print([m.name for m in pkgutil.iter_modules(supertonic.__path__)])
+          print(dir(supertonic))
+          T = getattr(supertonic, "TTS", None)
+          if T:
+              print("TTS.__init__", inspect.signature(T.__init__))
+              for n, f in inspect.getmembers(T, inspect.isfunction):
+                  if not n.startswith("_"): print(" ", n, inspect.signature(f))
+          PY
+      - name: Synthesize
+        run: |
+          mkdir -p out
+          python - <<'PY'
+          import numpy as np, soundfile as sf, inspect
+          from supertonic import TTS
+          tts = TTS(auto_download=True)
+          voice = None
+          for name in ("F1", "F2", "M1"):
+              try:
+                  voice = tts.get_voice_style(voice_name=name); print("voice", name); break
+              except Exception as e: print("voice fail", name, e)
+          sig = inspect.signature(tts.synthesize)
+          print("synthesize", sig)
+          for line in open(".github/tts/lines.tsv", encoding="utf-8"):
+              sid, text = line.rstrip("\n").split("\t")
+              kw = {"voice_style": voice}
+              if "lang" in sig.parameters: kw["lang"] = "ko"
+              if "language" in sig.parameters: kw["language"] = "ko"
+              out = tts.synthesize(text, **kw)
+              wav = out[0] if isinstance(out, tuple) else out
+              wav = np.asarray(wav, dtype=np.float32).reshape(-1)
+              sr = getattr(tts, "sample_rate", None) or 44100
+              sf.write(f"out/{sid}.wav", wav, sr)
+          open("out/voice.txt", "w").write(f"supertonic sr={sr}\n")
+          PY
+          ls out | wc -l
+      - name: Publish
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          cd out
+          git init -q && git checkout -q -b narration-st
+          git add . && git -c user.name=github-actions -c user.email=actions@github.com commit -qm "narration"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}" narration-st
