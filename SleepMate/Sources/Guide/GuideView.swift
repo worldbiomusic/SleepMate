@@ -229,7 +229,7 @@ private struct GuideVideoSection: View {
         if let player {
             VStack(alignment: .leading, spacing: 12) {
                 GuideSectionTitle(number: "00  영상으로 보기", title: "사용 예시 영상",
-                                  subtitle: "아침 요약 → 오늘 추천 → 기상 알람 → 취침 준비 → 기억 → 애플워치")
+                                  subtitle: "아침 카드 → 낮 다음 3가지 → 밤 카드 → 왜 이런 제안? → 기억 → 자세히 → 기록")
                 HStack {
                     Spacer()
                     ZStack {
@@ -239,10 +239,17 @@ private struct GuideVideoSection: View {
                             if let poster = UIImage(named: "guide-video-poster.jpg") {
                                 Image(uiImage: poster).resizable().scaledToFill()
                             }
-                            Image(systemName: "play.circle.fill")
-                                .font(.system(size: 64))
-                                .symbolRenderingMode(.palette)
-                                .foregroundStyle(.white, Color.black.opacity(0.45))
+                        }
+                    }
+                    // 재생 버튼은 아래쪽에 (표지 가운데 글자를 가리지 않게)
+                    .overlay(alignment: .bottom) {
+                        if !started {
+                            Label("영상 보기", systemImage: "play.fill")
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 16).padding(.vertical, 10)
+                                .background(Capsule().fill(Color.black.opacity(0.65)))
+                                .padding(.bottom, 18)
                         }
                     }
                     .contentShape(Rectangle())

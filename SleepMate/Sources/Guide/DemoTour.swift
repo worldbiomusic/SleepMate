@@ -28,7 +28,7 @@ final class DemoTour {
 
     let steps: [Step] = [
         Step(tab: .now, clock: .morning, caption: "아침 7:30 · 첫 화면은 카드 하나: 상태 한 마디와 오늘의 한 가지", seconds: 4.5),
-        Step(tab: .now, clock: .morning, caption: "컨디션은 한 번 탭(안 눌러도 수면으로 짐작) · ‘들어보기’로 음성 요약", seconds: 4.0),
+        Step(tab: .now, clock: .morning, caption: "컨디션은 한 번 탭 · 아래 ‘내 전략’엔 논문 근거 등급(A/B/C)이 붙어요", seconds: 4.0),
         Step(tab: .now, clock: .day, caption: "낮 2시 · 다음 3가지(일정·할 일·추천)만 보여 줘요", seconds: 4.5),
         Step(tab: .now, clock: .evening, caption: "밤 10:40 · 취침까지 남은 시간, 오늘 밤 앱 사용, 버튼 하나", seconds: 4.5),
         Step(tab: .now, clock: .evening, caption: "‘왜 이런 제안?’ · 규칙 → Jev → Claude 판단과 근거는 여기에만", seconds: 4.5, why: true),

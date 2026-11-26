@@ -36,7 +36,7 @@ struct SettingsView: View {
                         StrategyPickerView()
                     } label: {
                         LabeledContent {
-                            Text("\(PersonalStore.shared.profile.chosen.count)개 사용 중")
+                            Text("\(PersonalStore.shared.effective.chosen.count)개 사용 중")
                         } label: {
                             Label("나에게 맞춘 수면 전략", systemImage: "list.star")
                         }
