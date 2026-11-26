@@ -45,7 +45,7 @@ jobs:
           print("synthesize", sig)
           for line in open(".github/tts/lines.tsv", encoding="utf-8"):
               sid, text = line.rstrip("\n").split("\t")
-              kw = {"voice_style": voice}
+              kw = {"voice_style": voice, "total_steps": 16, "speed": 0.97}
               if "lang" in sig.parameters: kw["lang"] = "ko"
               if "language" in sig.parameters: kw["language"] = "ko"
               out = tts.synthesize(text, **kw)
