@@ -50,6 +50,7 @@ final class TestLab {
     var screenCount = 40
     enum ClockMode: String, CaseIterable, Identifiable {
         case morning = "아침 07:30"
+        case day = "낮 14:00"
         case evening = "밤 22:40"
         case real = "실제 시각"
         var id: String { rawValue }
@@ -59,6 +60,7 @@ final class TestLab {
         let base = Calendar.current.startOfDay(for: Date())
         switch clock {
         case .morning: return base.addingTimeInterval(7.5 * 3600)
+        case .day: return base.addingTimeInterval(14 * 3600)
         case .evening: return base.addingTimeInterval(22 * 3600 + 40 * 60)
         case .real: return nil
         }

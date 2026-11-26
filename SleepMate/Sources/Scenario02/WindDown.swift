@@ -293,10 +293,13 @@ struct WindDownView: View {
                         .foregroundStyle(n.nudge ? .orange : .indigo)
                     Text(n.message).font(.callout).fixedSize(horizontal: false, vertical: true)
                 }
-                DecisionBars(decision: n.view)
-                if let note = n.learnedNote {
-                    Label(note, systemImage: "brain").font(.caption).foregroundStyle(.purple)
+                DisclosureGroup("왜 이런 제안?") {
+                    DecisionBars(decision: n.view)
+                    if let note = n.learnedNote {
+                        Label(note, systemImage: "brain").font(.caption).foregroundStyle(.purple)
+                    }
                 }
+                .font(.footnote)
             } else {
                 HStack { ProgressView(); Text("지금 상황을 판단하는 중…").font(.caption) }
             }

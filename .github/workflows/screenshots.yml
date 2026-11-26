@@ -100,6 +100,15 @@ jobs:
           tail -5 logs/0-selftest.err || true
           grep -E "FAIL|SUMMARY" selftest.log || true
 
+          # ---- 새 구조: 지금 · 기록 · 설정 ----
+          shoot n1-now-morning   -testSleep short -testToday morningFocus -testClock morning -demoTab now
+          shoot n2-now-day       -testSleep short -testToday morningFocus -testClock day -demoTab now
+          shoot n3-now-night     -testSleep good -testClock evening -demoTab now
+          shoot n4-now-start     -demoTab now
+          shoot n5-why           -testSleep good -testClock evening -demoTab now -demoWhy YES
+          shoot n6-records       -testSleep short -testClock morning -demoTab records
+          shoot n7-settings      -testSleep good -demoTab settings
+
           # ---- 테스트 모드 (더미 데이터) ----
           shoot t1-short-today   -testSleep short -testToday morningFocus -testClock morning -demoTab today
           shoot t2-short-home    -testSleep short -testToday morningFocus -testClock morning -demoTab home
@@ -114,7 +123,6 @@ jobs:
           shoot t8-sound         -testSleep good -testClock evening -demoScreen sound
           shoot t9-jev           -testSleep good -demoScreen jev
           shoot t10-notion       -testSleep good -demoScreen notion
-          shoot t11-checklist    -demoTab home
 
           shoot 1-first-launch -demoData YES -demoScreen first
           shoot 2-home     -demoData YES -demoScreen home

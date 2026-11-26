@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 설정 탭: 장기 Context 편집 · 평가 지표 · 에이전트 기록 · 권한 · AI 설정
+/// 설정 탭: 목표 · 화면 · 연결 · 소개 · 테스트. 평가 지표·판단 기록은 '고급'으로.
 struct SettingsView: View {
     @Environment(SleepStore.self) private var store
     @Environment(ContextStore.self) private var ctx
@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var showGuide = false
     @State private var keywords = ""
     @State private var notifAllowed: Bool?
+    @AppStorage("showScoreNumber") private var showScore = false
 
     private func bind<T>(_ kp: WritableKeyPath<UserProfile, T>) -> Binding<T> {
         Binding(get: { ctx.profile[keyPath: kp] },
@@ -24,23 +25,29 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    FeedbackDonut(feedback: ctx.feedback.filter { $0.date >= Date().addingTimeInterval(-14 * 86400) })
-                    ScenarioAcceptChart(feedback: ctx.feedback)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("판단 경로 (EVENT → REASON)").font(.caption).foregroundStyle(.secondary)
-                        AgentPathChart(entries: AgentLog.shared.entries)
+                    Button {
+                        AppRouter.shared.detail = .guide
+                    } label: {
+                        Label("SleepMate 소개 · 사용 영상", systemImage: "play.rectangle.fill")
                     }
-                } header: {
-                    Text("한눈에 보기 · 최근 14일")
                 }
                 sleepGoalSection
                 morningSection
                 eveningSection
+                displaySection
                 personalSection
-                metricsSection
                 systemSection
+                Section {
+                    NavigationLink {
+                        AdvancedView()
+                    } label: {
+                        Label("고급 · 평가 지표와 판단 기록", systemImage: "chart.pie")
+                    }
+                } footer: {
+                    Text("발표·연구용: 추천 수락률, 판단 경로(규칙/Jev/Claude), 피드백 기록")
+                }
             }
-            .navigationTitle("설정 · Context")
+            .navigationTitle("설정")
             .sheet(isPresented: $showCoach) { CoachSettingsView() }
             .sheet(isPresented: $showGuide) { ShortcutGuideView() }
             .onAppear { keywords = ctx.profile.fixedKeywords.joined(separator: ", ") }
@@ -56,7 +63,7 @@ struct SettingsView: View {
                     value: bind(\.goalSleepMinutes), in: 300...600, step: 15)
             DatePicker("취침 목표", selection: timeBind(\.bedtimeMinutes), displayedComponents: .hourAndMinute)
         } header: {
-            Text("수면 목표 (장기 Context)")
+            Text("수면 목표")
         }
     }
 
@@ -119,6 +126,39 @@ struct SettingsView: View {
         calendar.revision += 1
     }
 
+    private var displaySection: some View {
+        Section {
+            Toggle("수면 점수 숫자도 보기", isOn: $showScore)
+        } header: {
+            Text("화면")
+        } footer: {
+            Text("끄면 ‘충분히 잤어요 · 괜찮아요 · 조금 부족해요’ 같은 말과 색으로만 보여 줘요. 숫자는 ‘왜 이런 제안?’에서 언제든 볼 수 있어요.")
+        }
+    }
+}
+
+/// 고급: 평가 지표 · 판단 경로 · 피드백 (예전 설정 맨 위 '한눈에 보기')
+struct AdvancedView: View {
+    @Environment(SleepStore.self) private var store
+    @Environment(ContextStore.self) private var ctx
+
+    var body: some View {
+        Form {
+            Section {
+                FeedbackDonut(feedback: ctx.feedback.filter { $0.date >= Date().addingTimeInterval(-14 * 86400) })
+                ScenarioAcceptChart(feedback: ctx.feedback)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("판단 경로 (EVENT → REASON)").font(.caption).foregroundStyle(.secondary)
+                    AgentPathChart(entries: AgentLog.shared.entries)
+                }
+            } header: {
+                Text("한눈에 보기 · 최근 14일")
+            }
+            metricsSection
+        }
+        .navigationTitle("고급")
+    }
+
     // MARK: 평가 지표 (추천 수락률 · 완료율 · 취침 규칙성 · 만족도)
 
     private var metricsSection: some View {
@@ -138,9 +178,12 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: 시스템
+}
 
-    private var systemSection: some View {
+// MARK: 시스템 (연결 · 권한)
+
+extension SettingsView {
+    var systemSection: some View {
         Section {
             NavigationLink {
                 TestLabView()

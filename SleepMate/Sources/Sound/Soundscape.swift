@@ -274,7 +274,8 @@ struct SoundscapeSection: View {
             }
             .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
             if let d = decision {
-                DecisionBars(decision: d)
+                DisclosureGroup("왜 이 소리를 추천했나요?") { DecisionBars(decision: d) }
+                    .font(.footnote)
             }
             Label("YouTube 앱의 ‘수면 타이머’(재생 화면 ⚙︎ → 수면 타이머)로 끝나는 시간을 정해 두세요.",
                   systemImage: "timer")

@@ -38,6 +38,7 @@ struct DashboardHeader: View {
     @Environment(ContextStore.self) private var ctx
     @Environment(CoachStore.self) private var coach
     @Environment(CalendarService.self) private var calendar
+    @AppStorage("showScoreNumber") private var showScore = false
     var openToday: () -> Void
 
     var body: some View {
@@ -47,9 +48,19 @@ struct DashboardHeader: View {
             if let s = stats {
                 let sc = SleepScore.compute(s, goalMinutes: ctx.profile.goalSleepMinutes)
                 HStack(spacing: 18) {
-                    ScoreRing(score: sc.total)
+                    if showScore {
+                        ScoreRing(score: sc.total)
+                    } else {
+                        let st = SleepStatus.from(score: sc.total)
+                        ZStack {
+                            Circle().fill(st.color.opacity(0.15)).frame(width: 72, height: 72)
+                            Image(systemName: st.icon).font(.system(size: 30)).foregroundStyle(st.color)
+                        }
+                    }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("수면 점수 · \(sc.label)").font(.subheadline.weight(.semibold))
+                        Text(SleepStatus.from(score: sc.total).word)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(SleepStatus.from(score: sc.total).color)
                         Text(Clock.durationText(s.asleepMin))
                             .font(.title2.weight(.bold))
                         if let avg = s.avg7AsleepMin, s.nightsIn7 >= 3 {
@@ -62,7 +73,7 @@ struct DashboardHeader: View {
                         }
                     }
                 }
-                ScoreBreakdownRow(sc: sc)
+                if showScore { ScoreBreakdownRow(sc: sc) }
 
                 if let top = topRecommendation(stats: s, score: sc.total) {
                     VStack(alignment: .leading, spacing: 4) {

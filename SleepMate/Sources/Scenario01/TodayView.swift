@@ -12,6 +12,7 @@ struct TodayView: View {
     @State private var proposals: [ScheduleChange] = []
     @State private var decided: [UUID: FeedbackResponse] = [:]
     @State private var errorText: String?
+    @AppStorage("showScoreNumber") private var showScore = false
 
     private var stats: SleepStats? { SleepStats(nights: store.nights) }
     private var score: SleepScore.Breakdown? {
@@ -64,11 +65,7 @@ struct TodayView: View {
         Section {
             HStack(alignment: .firstTextBaseline) {
                 if let sc = score {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("수면 점수").font(.caption).foregroundStyle(.secondary)
-                        Text("\(sc.total)").font(.system(size: 34, weight: .bold, design: .rounded))
-                            + Text(" / 100").font(.callout).foregroundColor(.secondary)
-                    }
+                    StatusBadge(status: .from(score: sc.total), score: showScore ? sc.total : nil, big: false)
                 } else {
                     Text("수면 기록 없음").foregroundStyle(.secondary)
                 }
@@ -78,6 +75,7 @@ struct TodayView: View {
                         .font(.caption.weight(.semibold)).foregroundStyle(.orange)
                 }
             }
+            DisclosureGroup("컨디션 자세히 입력 (선택)") {
             VStack(alignment: .leading, spacing: 6) {
                 Text("지금 피로도는요?").font(.subheadline)
                 Picker("피로도", selection: Binding(
@@ -103,6 +101,7 @@ struct TodayView: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
             }
         } header: {
             Text("오늘의 컨디션")

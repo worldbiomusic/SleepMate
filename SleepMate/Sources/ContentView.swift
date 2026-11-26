@@ -1,7 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// 홈 탭 (시나리오 05: 수면 리포트 · 요약 듣기 + 대시보드)
+/// 기록 탭 (시나리오 05: 수면 리포트 · 요약 듣기 + 대시보드 · 기억). 예전 홈.
 struct HomeView: View {
     var openToday: () -> Void = {}
     @Environment(SleepStore.self) private var store
@@ -34,9 +34,6 @@ struct HomeView: View {
                             .font(.callout)
                     }
                 }
-
-                SetupChecklist()
-                MemoryQuestionCard()
 
                 if store.hasData || store.isDemo {
                     Section {
@@ -87,16 +84,8 @@ struct HomeView: View {
                     }
                 }
             }
-            .navigationTitle("SleepMate")
+            .navigationTitle("기록")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        AppRouter.shared.showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("설정")
-                }
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
                         LogView()
@@ -160,12 +149,6 @@ struct HomeView: View {
             .sheet(isPresented: $showCoachSettings) {
                 CoachSettingsView()
             }
-            // 새 기록이 들어오면 요약 갱신 (단축어로 가져온 경우 설정에 따라 Claude 요약·자동 읽기)
-            .onChange(of: store.lastLoadedAt) { _, _ in
-                let imported = store.lastChangeWasImport
-                let persist = !store.isDemo
-                Task { await coach.update(nights: store.nights, fromImport: imported, persist: persist) }
-            }
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: [.xml, .data],
                           allowsMultipleSelection: false) { result in
@@ -200,25 +183,16 @@ struct HomeView: View {
                 }
             }
             .task {
-                // 앱 시작 시 저장된 기록으로 요약 준비 (이미 같은 밤 요약이 있으면 유지)
-                await coach.update(nights: store.nights, fromImport: false)
-
-                // CI 검증용: `-testImportURL "sleepmate://import?data=..."` 로 실행하면
-                // 단축어가 앱을 열 때와 같은 처리 경로(store.handle)를 탄다.
-                if let s = UserDefaults.standard.string(forKey: "testImportURL"),
-                   let url = URL(string: s) {
-                    store.handle(url: url)
-                    return
-                }
+                if UserDefaults.standard.string(forKey: "testImportURL") != nil { return }   // 루트에서 처리
                 if !DemoMode.isOn, let screen = DemoMode.screen, screen != "home" {
                     demoDestination = screen      // 실제 데이터로 특정 화면 확인 (CI 스크린샷용)
                     return
                 }
-                guard DemoMode.isOn, !store.isDemo else { return }
+                guard DemoMode.isOn else { return }
                 if DemoMode.screen == "first" { return }
                 if DemoMode.screen == "guide" { showGuide = true; return }
                 if DemoMode.screen == "settings" { showCoachSettings = true; return }
-                store.loadDemo()
+                if !store.isDemo { store.loadDemo() }
                 if let screen = DemoMode.screen, screen != "home" {
                     demoDestination = screen
                 }

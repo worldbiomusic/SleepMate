@@ -46,6 +46,7 @@ enum SelfTestSuite {
         notionTests(t)
         usageTests(t)
         memoryTests(t)
+        nowTests(t)
         return t.results
     }
 
@@ -894,5 +895,72 @@ extension SelfTestSuite {
             let msg = ClaudeClient.userMessage(st, learned: snap.lines)
             t.check("Claude 입력에 배운 습관", msg.contains("learned_patterns_about_user"))
         }
+    }
+}
+
+// MARK: - '지금' 탭 (모드 · 상태 단어 · 다음 3가지)
+
+extension SelfTestSuite {
+    static func nowTests(_ t: TestRecorder) {
+        t.group = "지금 화면"
+        var p = UserProfile()
+        p.bedtimeMinutes = 23 * 60 + 30
+        p.windDownLeadMinutes = 90
+        p.defaultWakeMinutes = 7 * 60
+        func mode(_ h: Int, _ m: Int, wake: Int? = nil, data: Bool = true) -> NowMode {
+            NowPlanner.mode(now: at(0, h, m), profile: p, hasData: data, wakeMinutes: wake)
+        }
+        t.equal("기록 없으면 시작", mode(7, 30, data: false), .start)
+        t.equal("07:30 아침", mode(7, 30), .morning)
+        t.equal("10:29 아직 아침 (기상 + 3.5시간 전)", mode(10, 29), .morning)
+        t.equal("10:31 낮", mode(10, 31), .day)
+        t.equal("14:00 낮", mode(14, 0), .day)
+        t.equal("21:59 낮 (준비 91분 전)", mode(21, 59), .day)
+        t.equal("22:00 밤 (준비 시작)", mode(22, 0), .night)
+        t.equal("22:40 밤", mode(22, 40), .night)
+        t.equal("01:30 밤 (취침 지남)", mode(1, 30), .night)
+        t.equal("03:40 아직 밤", mode(3, 40), .night)
+        t.equal("늦게 일어난 날: 12:00도 아침", mode(12, 0, wake: 9 * 60), .morning)
+        t.equal("늦게 일어난 날: 12:31 낮", mode(12, 31, wake: 9 * 60), .day)
+        var late = p
+        late.bedtimeMinutes = 60          // 새벽 1시 취침
+        t.equal("새벽 1시 취침: 23:40 밤", NowPlanner.mode(now: at(0, 23, 40), profile: late, hasData: true, wakeMinutes: nil), .night)
+        t.equal("새벽 1시 취침: 22:00 낮", NowPlanner.mode(now: at(0, 22, 0), profile: late, hasData: true, wakeMinutes: nil), .day)
+
+        t.equal("85점 충분", SleepStatus.from(score: 85), .great)
+        t.equal("84점 괜찮음", SleepStatus.from(score: 84), .okay)
+        t.equal("70점 괜찮음", SleepStatus.from(score: 70), .okay)
+        t.equal("69점 조금 부족", SleepStatus.from(score: 69), .short)
+        t.equal("54점 많이 부족", SleepStatus.from(score: 54), .veryShort)
+        t.equal("상태 단어", SleepStatus.short.word, "조금 부족해요")
+        t.equal("짧은 꼬리표", SleepStatus.veryShort.tag, "부족")
+
+        let now = at(0, 14, 0)
+        let events = [item("오전 수업", 9, 0, 10, 0), item("팀 회의", 13, 0, 14, 30), item("세미나", 15, 0, 16, 0),
+                      PlanItem(id: "allday", title: "종일", start: at(0, 0, 0), end: at(1, 0, 0), isAllDay: true,
+                               isFixed: false, canModify: true, calendarName: "t")]
+        let tasks = [NotionTask(id: "a", title: "보고서", day: today, time: nil, done: false, cls: nil),
+                     NotionTask(id: "b", title: "운동", day: today, time: at(0, 18, 0), done: false, cls: nil),
+                     NotionTask(id: "c", title: "끝난 일", day: today, time: nil, done: true, cls: nil),
+                     NotionTask(id: "d", title: "내일 일", day: at(1, 0, 0), time: nil, done: false, cls: nil)]
+        let tips = [DayRecommendation(key: "nap", icon: "bed.double", title: "20분 낮잠", detail: "")]
+        let n3 = NowPlanner.nextThree(now: now, events: events, tasks: tasks, tips: tips)
+        t.equal("다음 3가지: 진행 중 → 다음 일정 → 시각 있는 할 일", n3.map(\.title), ["팀 회의", "세미나", "운동"])
+        let few = NowPlanner.nextThree(now: now, events: [item("세미나", 15, 0, 16, 0)], tasks: tasks, tips: tips)
+        t.equal("모자라면 시각 없는 할 일·추천으로 채움", few.map(\.title), ["세미나", "운동", "보고서"])
+        let one = NowPlanner.nextThree(now: now, events: [], tasks: [], tips: tips)
+        t.equal("일정 없으면 추천", one.map(\.kind), [.tip])
+        t.equal("기록 없음 추천은 빼기",
+                NowPlanner.nextThree(now: now, events: [], tasks: [],
+                                     tips: [DayRecommendation(key: "nodata", icon: "", title: "x", detail: "")]).count, 0)
+
+        t.equal("체크인 피곤 → 피로도 4", CheckIn.tired.fatigue, 4)
+        t.equal("피로도 2 → 개운", CheckIn.from(fatigue: 2), .fresh)
+        t.equal("피로도 없으면 추정", CheckIn.from(fatigue: nil), nil)
+        t.equal("카운트다운", NowPlanner.countdown(minutesToBed: 50), "취침까지 50분")
+        t.equal("취침 지남", NowPlanner.countdown(minutesToBed: -20), "취침 시간이 20분 지났어요")
+
+        t.equal("예전 탭 이름 → 지금 + 자세히", AppTab.fromDemo("winddown").map { "\($0.0)-\($0.1?.rawValue ?? "")" }, "now-winddown")
+        t.equal("예전 홈 → 기록", AppTab.fromDemo("home")?.0, .records)
     }
 }

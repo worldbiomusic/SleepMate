@@ -228,7 +228,7 @@ private struct GuideVideoSection: View {
     var body: some View {
         if let player {
             VStack(alignment: .leading, spacing: 12) {
-                GuideSectionTitle(number: "00  영상으로 보기", title: "45초 사용 예시",
+                GuideSectionTitle(number: "00  영상으로 보기", title: "사용 예시 영상",
                                   subtitle: "아침 요약 → 오늘 추천 → 기상 알람 → 취침 준비 → 기억 → 애플워치")
                 HStack {
                     Spacer()
