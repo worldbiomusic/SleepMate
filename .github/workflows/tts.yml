@@ -12,7 +12,9 @@ jobs:
         run: say -v '?' | grep -i -E "ko_KR|yuna" || true
       - name: Synthesize
         run: |
-          VOICE=$(say -v '?' | grep -i "ko_KR" | grep -i -E "premium|enhanced" | head -1 | sed -E 's/ +ko_KR.*//')
+          # 자연스러운 Yuna를 우선 (Eddy·Flo 등은 기계음에 가까움)
+          VOICE=$(say -v '?' | grep -i "ko_KR" | grep -i -E "yuna.*(premium|enhanced)" | head -1 | sed -E 's/ +ko_KR.*//')
+          [ -z "$VOICE" ] && VOICE=$(say -v '?' | grep -E "^Yuna " | head -1 | sed -E 's/ +ko_KR.*//')
           [ -z "$VOICE" ] && VOICE=$(say -v '?' | grep -i "ko_KR" | head -1 | sed -E 's/ +ko_KR.*//')
           [ -z "$VOICE" ] && { echo "::error::no Korean voice"; exit 1; }
           echo "voice: $VOICE"
